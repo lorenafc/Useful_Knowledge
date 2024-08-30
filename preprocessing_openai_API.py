@@ -23,6 +23,13 @@ whitelist_file_path = './path/to/your/file/file.csv'
 geonames_df = pd.read_csv(whitelist_file_path, delimiter=';')
 whitelist_cities = geonames_df['Name'].str.strip().unique().tolist()
 
+
+
+# Load the GeoNames whitelist - https://public.opendatasoft.com/explore/dataset/geonames-all-cities-with-a-population-500/information/?disjunctive.country
+whitelist_file_path = './data/geonames_all_cities_with_a_population_500_csv.csv' #'./path/to/your/file/file.csv'
+geonames_df = pd.read_csv(whitelist_file_path, delimiter=';')
+whitelist_cities = geonames_df['Name'].str.strip().unique().tolist()
+
 def correct_city_name_simple(city_name, api_key):
     """
     Corrects the encoding and spelling of a city name using the OpenAI API,
@@ -35,6 +42,11 @@ def correct_city_name_simple(city_name, api_key):
     Returns:
     str: The corrected city name, or the original name if no correction was needed.
     """
+    
+    # Skip processing if the city_name is empty or NaN
+    if not city_name or pd.isna(city_name):
+        return None
+    
     if city_name in whitelist_cities:
         return city_name
 
@@ -42,14 +54,15 @@ def correct_city_name_simple(city_name, api_key):
 
     try:
         prompt_correct = (
-            f"Correct the spelling of the following city name: '{city_name}'. "
-            "Provide the correct city name only."
+            f"Correct the encoding and spelling of the following city name: '{city_name}'. "
+            "Provide only the correct city name, no additional comments."
         )
         response_correct = openai.ChatCompletion.create(
             model= "gpt-3.5-turbo", #"gpt-4o", gpt-4o-mini,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt_correct}
+                # {"role": "assistant", "content": "Prochowice"}  # Example of how the assistant should respond
             ],
             max_tokens=30,
             temperature=0.1,
