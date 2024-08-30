@@ -23,13 +23,6 @@ whitelist_file_path = './path/to/your/file/file.csv'
 geonames_df = pd.read_csv(whitelist_file_path, delimiter=';')
 whitelist_cities = geonames_df['Name'].str.strip().unique().tolist()
 
-
-
-# Load the GeoNames whitelist - https://public.opendatasoft.com/explore/dataset/geonames-all-cities-with-a-population-500/information/?disjunctive.country
-whitelist_file_path = './data/geonames_all_cities_with_a_population_500_csv.csv' #'./path/to/your/file/file.csv'
-geonames_df = pd.read_csv(whitelist_file_path, delimiter=';')
-whitelist_cities = geonames_df['Name'].str.strip().unique().tolist()
-
 def correct_city_name_simple(city_name, api_key):
     """
     Corrects the encoding and spelling of a city name using the OpenAI API,
