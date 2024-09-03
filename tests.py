@@ -62,7 +62,7 @@ def check_ungeocoded_locations(file_path):
     
     return ungeocoded_borncity, ungeocoded_deathcity, ungeocoded_activecity
 
-# Example usage
+# Add your file
 file_path = 'path/to/your/file.csv'
 check_ungeocoded_locations(file_path)
 

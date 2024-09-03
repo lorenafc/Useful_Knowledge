@@ -23,6 +23,8 @@ whitelist_file_path = './path/to/your/file/file.csv'
 geonames_df = pd.read_csv(whitelist_file_path, delimiter=';')
 whitelist_cities = geonames_df['Name'].str.strip().unique().tolist()
 
+
+
 def correct_city_name_simple(city_name, api_key):
     """
     Corrects the encoding and spelling of a city name using the OpenAI API,
@@ -48,24 +50,22 @@ def correct_city_name_simple(city_name, api_key):
     try:
         prompt_correct = (
             f"Correct the encoding and spelling of the following city name: '{city_name}'. "
-            "Provide only the correct city name, no additional comments."
+            "Provide only the correct city name."
         )
-        response_correct = openai.ChatCompletion.create(
-            model= "gpt-3.5-turbo", #"gpt-4o", gpt-4o-mini,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt_correct}
-                # {"role": "assistant", "content": "Prochowice"}  # Example of how the assistant should respond
-            ],
-            max_tokens=30,
+        response_correct = openai.Completion.create(
+            model="gpt-3.5-turbo",  #"text-davinci-003"
+            prompt=prompt_correct,
+            max_tokens=20,  # Keep the token limit small since we only need the name of the place
             temperature=0.1,
             seed=123,
+            stop=["."],  # Use stop sequences to cut off extra text
         )
-        corrected_name = response_correct['choices'][0]['message']['content'].strip()
+        corrected_name = response_correct['choices'][0]['text'].strip()
         return corrected_name
     except Exception as e:
-        print(f"Error processing city name {city_name}: {e}")
-        return city_name
+        
+        return city_name  # If an error occurs, silently return the original city name
+
 
 def geocode_city_with_openai(city_name, name_and_year_info, birthyear, deathyear, api_key):
     """
