@@ -17,15 +17,13 @@ from googlemaps import Client as GoogleMaps
 import os
 
 
-
 # Load the GeoNames whitelist - https://public.opendatasoft.com/explore/dataset/geonames-all-cities-with-a-population-500/information/?disjunctive.country
 whitelist_file_path = './path/to/your/file/file.csv'
 geonames_df = pd.read_csv(whitelist_file_path, delimiter=';')
 whitelist_cities = geonames_df['Name'].str.strip().unique().tolist()
 
 
-
-def correct_city_name_simple(city_name, api_key):
+def correct_city_name(city_name, api_key):
     """
     Corrects the encoding and spelling of a city name using the OpenAI API,
     unless the city name is on a whitelist of known correct names.
@@ -65,7 +63,6 @@ def correct_city_name_simple(city_name, api_key):
     except Exception as e:
         
         return city_name  # If an error occurs, silently return the original city name
-
 
 def geocode_city_with_openai(city_name, name_and_year_info, birthyear, deathyear, api_key):
     """
@@ -132,15 +129,15 @@ def correct_and_geocode(df, openai_api_key, output_file_csv, output_file_excel):
     """
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    df['corrected_borncity'] = df.apply(lambda row: correct_city_name_simple(
+    df['corrected_borncity'] = df.apply(lambda row: correct_city_name(
         row['borncity'], openai_api_key
     ) if pd.notnull(row['borncity']) else row['borncity'], axis=1)
 
-    df['corrected_deathcity'] = df.apply(lambda row: correct_city_name_simple(
+    df['corrected_deathcity'] = df.apply(lambda row: correct_city_name(
         row['deathcity'], openai_api_key
     ) if pd.notnull(row['deathcity']) else row['deathcity'], axis=1)
 
-    df['corrected_activecity'] = df.apply(lambda row: correct_city_name_simple(
+    df['corrected_activecity'] = df.apply(lambda row: correct_city_name(
         row['activecity'], openai_api_key
     ) if pd.notnull(row['activecity']) else row['activecity'], axis=1)
 
