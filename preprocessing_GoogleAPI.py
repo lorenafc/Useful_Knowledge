@@ -65,7 +65,11 @@ def geocode_city(city_name, year):
                     country_code = component['short_name']
                 
                 # Check if location is in Europe (using country codes for Europe)
-                if country_code in ['AL', 'AD', 'AM', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'GE', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'KZ', 'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME', 'NL', 'MK', 'NO', 'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB']:
+                if country_code in ['AL', 'AD', 'AM', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 
+                                    'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'GE', 'DE', 'GR', 'HU', 'IS', 
+                                    'IE', 'IT', 'KZ', 'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 
+                                    'ME', 'NL', 'MK', 'NO', 'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 
+                                    'SI', 'ES', 'SE', 'CH', 'UA', 'GB']:
                     europe_location = result['geometry']['location']
                     break  # Prioritize European location if found
 
@@ -87,17 +91,22 @@ def geocode_city(city_name, year):
         return city_name, (location['lat'], location['lng']), country_name, "no"
     
     # Return None if no result found
-    return city_name, (None, None), None, "no"
+    return city_name, (None, None), None, ""
 
 # Step 1: Identify unique city names across columns for geocoding
 city_columns = ['borncity', 'deathcity', 'activecity']
 
-# Step 2: Create a new column to track incorrect geocodes in the Americas or Oceania before 1500
-geocoded_data['americas_or_oceania_before_1500'] = "no"  # Default value
+# Step 2: Create new columns to track incorrect geocodes in the Americas or Oceania before 1500 for each location type
+geocoded_data['borncity_americas_or_oceania_before_1500'] = ""
+geocoded_data['deathcity_americas_or_oceania_before_1500'] = ""
+geocoded_data['activecity_americas_or_oceania_before_1500'] = ""
 
 # Go through each city in each column and build the geocoding cache
 for _, row in geocoded_data.iterrows():
-    for city_col in city_columns:
+    for city_col, flag_col in [('borncity', 'borncity_americas_or_oceania_before_1500'), 
+                               ('deathcity', 'deathcity_americas_or_oceania_before_1500'), 
+                               ('activecity', 'activecity_americas_or_oceania_before_1500')]:
+        
         city = row[city_col]
         # Prioritize deathyear, and if not available, use birthyear + 60 as an estimate
         year = row['deathyear'] if pd.notna(row['deathyear']) else (row['birthyear'] + 60 if pd.notna(row['birthyear']) else None)
@@ -111,8 +120,8 @@ for _, row in geocoded_data.iterrows():
                     save_cache()  # Save incrementally after each city
 
             # Ensure the key exists before checking for 'americas_or_oceania_before_1500'
-            if city in geocode_cache and 'americas_or_oceania_before_1500' in geocode_cache[city] and geocode_cache[city]['americas_or_oceania_before_1500'] == "yes":
-                geocoded_data.at[_, 'americas_or_oceania_before_1500'] = "yes"
+            if city in geocode_cache and 'americas_or_oceania_before_1500' in geocode_cache[city]:
+                geocoded_data.at[_, flag_col] = geocode_cache[city]['americas_or_oceania_before_1500']
 
 # Step 3: Map the geocoded coordinates and country back to the DataFrame
 def map_coordinates(df, city_col):
@@ -124,6 +133,16 @@ def map_coordinates(df, city_col):
 # Apply mapping to all city columns (borncity, deathcity, activecity)
 for city_col in city_columns:
     geocoded_data = map_coordinates(geocoded_data, city_col)
+
+# Step 4: Reorder the columns to place americas_or_oceania_before_1500 after the country columns
+cols = ['borncity_coordinates', 'borncity_country', 'borncity_americas_or_oceania_before_1500', 
+        'deathcity_coordinates', 'deathcity_country', 'deathcity_americas_or_oceania_before_1500', 
+        'activecity_coordinates', 'activecity_country', 'activecity_americas_or_oceania_before_1500']
+
+# Reorder DataFrame columns
+geocoded_data = geocoded_data[['indexauthor', 'starturl', 'birthyear', 'deathyear', 'nameandbirthdeathyear', 
+                               'georeferenceurl', 'borncity', 'deathcity', 'activecity'] + cols]
+
 
 # Step 4: Save the DataFrame with the geocoded results
 output_file_csv = 'path/to/your/output_file.csv'  # Save CSV
