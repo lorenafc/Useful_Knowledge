@@ -29,6 +29,15 @@ else:
 
 # Function to save cache incrementally
 def save_cache():
+    
+    """
+    Saves the current state of the geocoded data cache incrementally to a CSV file.
+    
+    The cache stores previously geocoded city data (city name, coordinates, country, 
+    and a flag for whether the location was in the Americas or Oceania before 1500). 
+    This ensures that cities already geocoded won't be processed again.
+    """
+    
     cache_df = pd.DataFrame.from_dict(geocode_cache, orient='index')
     cache_df.reset_index(inplace=True)
     cache_df.columns = ['city', 'coordinates', 'country', 'americas_or_oceania_before_1500']
@@ -45,6 +54,21 @@ americas_oceania_countries = [
 
 # Function to geocode with Europe constraint for cities before 1500
 def geocode_city(city_name, year):
+    """
+    Geocodes a city name using the Google Maps API, prioritizing locations in Europe if the year is <= 1500.
+    
+    If the year is before 1500, this function tries to prioritize European locations, 
+    if available. If the location is in the Americas or Oceania before 1500, 
+    it is flagged accordingly. Otherwise, the first geocoded result is used.
+    
+    Args:
+        city_name (str): The name of the city to geocode.
+        year (int): The year of relevance (e.g., birth year or death year).
+    
+    Returns:
+        tuple: Contains the city name, coordinates (latitude, longitude), country name, 
+               and a flag indicating if the location was in the Americas or Oceania before 1500.
+    """
     time.sleep(1)  # Rate limiting
     
     # Geocode the city
@@ -67,9 +91,8 @@ def geocode_city(city_name, year):
                 # Check if location is in Europe (using country codes for Europe)
                 if country_code in ['AL', 'AD', 'AM', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 
                                     'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'GE', 'DE', 'GR', 'HU', 'IS', 
-                                    'IE', 'IT', 'KZ', 'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 
-                                    'ME', 'NL', 'MK', 'NO', 'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 
-                                    'SI', 'ES', 'SE', 'CH', 'UA', 'GB']:
+                                    'IE', 'IT', 'KZ', 'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME', 'NL', 
+                                    'MK', 'NO', 'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB']:
                     europe_location = result['geometry']['location']
                     break  # Prioritize European location if found
 
@@ -125,6 +148,21 @@ for _, row in geocoded_data.iterrows():
 
 # Step 3: Map the geocoded coordinates and country back to the DataFrame
 def map_coordinates(df, city_col):
+    """
+    Maps the geocoded coordinates and country information back to the DataFrame 
+    based on previously cached geocode results.
+    
+    This function is responsible for mapping the geocoded results (coordinates and country) 
+    from the cache back to the corresponding columns in the DataFrame.
+    
+    Args:
+        df (pd.DataFrame): The DataFrame containing the city data.
+        city_col (str): The column name for the city (e.g., 'borncity', 'deathcity', or 'activecity').
+    
+    Returns:
+        pd.DataFrame: Updated DataFrame with the coordinates and country mapped.
+    """
+   
     df[f'{city_col}_coordinates'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('coordinates', ""))
     df[f'{city_col}_country'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('country', ""))
     
