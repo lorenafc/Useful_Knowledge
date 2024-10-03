@@ -29,22 +29,16 @@ else:
 
 # Function to save cache incrementally
 def save_cache():
-    
     """
     Saves the current state of the geocoded data cache incrementally to a CSV file.
-    
-    The cache stores previously geocoded city data (city name, coordinates, country, 
-    and a flag for whether the location was in the Americas or Oceania before 1500). 
-    This ensures that cities already geocoded won't be processed again.
+    The cache stores previously geocoded city data (city name, coordinates, and country).
     """
-    
     cache_df = pd.DataFrame.from_dict(geocode_cache, orient='index')
     cache_df.reset_index(inplace=True)
-    cache_df.columns = ['city', 'coordinates', 'country', 'americas_or_oceania_before_1500']
+    cache_df.columns = ['city', 'coordinates', 'country', 'country_code']
     cache_df.to_csv(cache_file, index=False)
 
-
-# List of country codes for Americas and Oceania (it worked better adding the countries list than the continents)
+# List of country codes for Americas and Oceania
 americas_oceania_countries = [
     'US', 'CA', 'MX', 'GT', 'BZ', 'SV', 'HN', 'NI', 'CR', 'PA',  # North America & Central America
     'CO', 'VE', 'GY', 'SR', 'BR', 'PE', 'BO', 'CL', 'AR', 'UY', 'PY', 'EC',  # South America
@@ -52,22 +46,24 @@ americas_oceania_countries = [
     'AU', 'NZ', 'FJ', 'PG', 'SB', 'VU', 'WS', 'TO', 'KI', 'TV', 'NR', 'PW', 'FM', 'MH'  # Oceania
 ]
 
+# List of country codes for Europe
+european_countries = [
+    'AL', 'AD', 'AM', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'GE',
+    'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'KZ', 'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME',
+    'NL', 'MK', 'NO', 'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB'
+]
+
 # Function to geocode with Europe constraint for cities before 1500
 def geocode_city(city_name, year):
     """
     Geocodes a city name using the Google Maps API, prioritizing locations in Europe if the year is <= 1500.
-    
-    If the year is before 1500, this function tries to prioritize European locations, 
-    if available. If the location is in the Americas or Oceania before 1500, 
-    it is flagged accordingly. Otherwise, the first geocoded result is used.
     
     Args:
         city_name (str): The name of the city to geocode.
         year (int): The year of relevance (e.g., birth year or death year).
     
     Returns:
-        tuple: Contains the city name, coordinates (latitude, longitude), country name, 
-               and a flag indicating if the location was in the Americas or Oceania before 1500.
+        tuple: Contains the city name, coordinates (latitude, longitude), country name, and country code.
     """
     time.sleep(1)  # Rate limiting
     
@@ -76,9 +72,8 @@ def geocode_city(city_name, year):
     
     if geocode_result:
         europe_location = None
-        is_in_americas_or_oceania = False
         country_name = None
-        country_code = None  # Get country code for more precise identification
+        country_code = None # Get country code for more precise identification
 
         for result in geocode_result:
             address_components = result['address_components']
@@ -89,32 +84,20 @@ def geocode_city(city_name, year):
                     country_code = component['short_name']
                 
                 # Check if location is in Europe (using country codes for Europe)
-                if country_code in ['AL', 'AD', 'AM', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 
-                                    'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'GE', 'DE', 'GR', 'HU', 'IS', 
-                                    'IE', 'IT', 'KZ', 'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME', 'NL', 
-                                    'MK', 'NO', 'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB']:
+                if country_code in european_countries:
                     europe_location = result['geometry']['location']
                     break  # Prioritize European location if found
 
-                # Check if location is in Americas or Oceania (based on country codes)
-                if country_code in americas_oceania_countries:
-                    is_in_americas_or_oceania = True
-        
-        # If European location found and year <= 1500, use European location
+        # If European location is found and year <= 1500, use European location
         if year <= 1500 and europe_location:
-            return city_name, (europe_location['lat'], europe_location['lng']), country_name, "no"
+            return city_name, (europe_location['lat'], europe_location['lng']), country_name, country_code
         
-        # If the location is in the Americas or Oceania before 1500, mark as incorrect
-        if year <= 1500 and is_in_americas_or_oceania:
-            location = geocode_result[0]['geometry']['location']
-            return city_name, (location['lat'], location['lng']), country_name, "yes"
-
         # Otherwise, use the first result
         location = geocode_result[0]['geometry']['location']
-        return city_name, (location['lat'], location['lng']), country_name, "no"
+        return city_name, (location['lat'], location['lng']), country_name, country_code
     
     # Return None if no result found
-    return city_name, (None, None), None, ""
+    return city_name, (None, None), None, None
 
 # Step 1: Identify unique city names across columns for geocoding
 city_columns = ['borncity', 'deathcity', 'activecity']
@@ -124,7 +107,7 @@ geocoded_data['borncity_americas_or_oceania_before_1500'] = ""
 geocoded_data['deathcity_americas_or_oceania_before_1500'] = ""
 geocoded_data['activecity_americas_or_oceania_before_1500'] = ""
 
-# Go through each city in each column and build the geocoding cache
+# Step 3: Go through each city in each column and build the geocoding cache
 for _, row in geocoded_data.iterrows():
     for city_col, flag_col in [('borncity', 'borncity_americas_or_oceania_before_1500'), 
                                ('deathcity', 'deathcity_americas_or_oceania_before_1500'), 
@@ -137,23 +120,39 @@ for _, row in geocoded_data.iterrows():
         if pd.notna(city):  # If city is not missing
             if city not in geocode_cache:
                 # Geocode city with constraints if not cached
-                city_name, coordinates, country, americas_or_oceania_flag = geocode_city(city, year)
+                city_name, coordinates, country, country_code = geocode_city(city, year)
                 if coordinates != (None, None):  # Save successful geocoding
-                    geocode_cache[city] = {'coordinates': coordinates, 'country': country, 'americas_or_oceania_before_1500': americas_or_oceania_flag}
+                    geocode_cache[city] = {'coordinates': coordinates, 'country': country, 'country_code': country_code}
                     save_cache()  # Save incrementally after each city
+                else:
+                    # If geocoding failed, set placeholder value
+                    print(f"Geocoding failed for city: {city}")
+                    geocode_cache[city] = {'coordinates': (None, None), 'country': None, 'country_code': None}
+            
+            # Now safely access the cached city data
+            cached_city = geocode_cache.get(city, {})
+            
+            # Check if 'country_code' exists in the cache, if not skip or handle it
+            country_code = cached_city.get('country_code', None)
+            if country_code is None:
+                print(f"Missing country code for city: {city}")
+                continue  # Skip this city if country code is missing
+            
+            # Check if the city is in Americas/Oceania and the year is before 1500
+            is_in_americas_or_oceania = country_code in americas_oceania_countries
+            before_1500 = year <= 1500 if year else False
+            
+            # Set the flag dynamically
+            if before_1500 and is_in_americas_or_oceania:
+                geocoded_data.at[_, flag_col] = "yes"
+            else:
+                geocoded_data.at[_, flag_col] = "no"
 
-            # Ensure the key exists before checking for 'americas_or_oceania_before_1500'
-            if city in geocode_cache and 'americas_or_oceania_before_1500' in geocode_cache[city]:
-                geocoded_data.at[_, flag_col] = geocode_cache[city]['americas_or_oceania_before_1500']
-
-# Step 3: Map the geocoded coordinates and country back to the DataFrame
+# Step 4: Map the geocoded coordinates and country back to the DataFrame
 def map_coordinates(df, city_col):
     """
     Maps the geocoded coordinates and country information back to the DataFrame 
     based on previously cached geocode results.
-    
-    This function is responsible for mapping the geocoded results (coordinates and country) 
-    from the cache back to the corresponding columns in the DataFrame.
     
     Args:
         df (pd.DataFrame): The DataFrame containing the city data.
@@ -172,7 +171,7 @@ def map_coordinates(df, city_col):
 for city_col in city_columns:
     geocoded_data = map_coordinates(geocoded_data, city_col)
 
-# Step 4: Reorder the columns to place americas_or_oceania_before_1500 after the country columns
+# Step 5: Reorder the columns to place americas_or_oceania_before_1500 after the country columns
 cols = ['borncity_coordinates', 'borncity_country', 'borncity_americas_or_oceania_before_1500', 
         'deathcity_coordinates', 'deathcity_country', 'deathcity_americas_or_oceania_before_1500', 
         'activecity_coordinates', 'activecity_country', 'activecity_americas_or_oceania_before_1500']
