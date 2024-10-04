@@ -49,6 +49,7 @@ def correct_city_name(city_name, api_key):
         prompt_correct = (
             f"Correct the encoding and spelling of the following city name: '{city_name}'. "
             "Provide only the correct city name."
+            "Don't change the location name if the location exists" 
         )
         response_correct = openai.Completion.create(
             model="gpt-3.5-turbo",  #"text-davinci-003"
@@ -90,9 +91,10 @@ def geocode_city_with_openai(city_name, name_and_year_info, birthyear, deathyear
         prompt_geocode = (
             f"Given the city name '{city_name}' and the historical context '{context}', "
             "provide the most likely correct latitude, longitude, and country. Return the result in the format: latitude, longitude, country."
+            "If a city name has multiple locations and the year is before 1500, prioritize locations in Europe."
         )
         response_geocode = openai.ChatCompletion.create(
-            model= "gpt-3.5-turbo", #"gpt-4o",   "gpt-4o-mini",
+            model= "gpt-4o", #"gpt-3.5-turbo",    "gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt_geocode}
