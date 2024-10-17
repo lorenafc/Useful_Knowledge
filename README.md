@@ -4,7 +4,7 @@
 ## Non-City Authors
 
 ### Overview
-This part of the project involves the geocoding and visualization of authors from small cities, retrieved from the Virtual International Authority File (VIAF) by Eric Chaney.
+This part of the project involves the geocoding and visualization of authors from small cities, retrieved from the [Virtual International Authority File (VIAF)](https://viaf.org/) by [Eric Chaney](https://www.tse-fr.eu/sites/default/files/TSE/documents/sem2022/bid/chaney.pdf).
 
 - **Dataset**: The dataset used contains author names, authors index, their birth and death years, birth, death, and active cities, the VIAF URL and  a georeference URL.
 - The original dataset had encoding issues with some names. These encoding errors were mostly corrected using this script: 
