@@ -170,6 +170,117 @@ def assign_unique_id(city_col, author, coordinates, id_cache, unique_id):
         author_data.at[author, f'{city_col}_id'] = id_cache[coordinates]
     return unique_id
 
+
+ # Modify the geocode_city function to return both coordinates and country
+def geocode_city(city_name, year):
+     """
+     Geocodes a city using the Google Maps API.
+     
+     Args:
+         city_name (str): The name of the city to geocode.
+         year (int): The year for historical context (not used directly in this function).
+     
+     Returns:
+         tuple: The city name, latitude, longitude, and country code.
+     """
+     time.sleep(1)  # To avoid hitting API limits
+     
+     geocode_result = gmaps.geocode(city_name)
+     
+     #If there is only one result for the city:
+     if len(geocode_result) == 1:
+         
+         location = geocode_result[0]['geometry']['location']
+         country_code = geocode_result[0]['address_components'][-1]['short_name']  # Get the country code
+         coordinates = f"{location['lat']}, {location['lng']}"
+         
+         # Save the city and set the flag based on the discovery year
+         save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_code, unique_id)
+         set_flag(city_col, author, country_code, row)
+         unique_id = assign_unique_id(city_col, author, coordinates, id_cache, unique_id)
+         
+         
+         return city_name, location['lat'], location['lng'], country_code
+     
+     #If there are multiple results for the city name
+     elif len(geocode_result) > 1:
+         europe_location = None
+         americas_oceania_location = None
+         
+         # Loop through the results to check country codes
+         
+         for result in geocode_result:
+             location = result['geometry']['location']
+             country_code = result["address_components"][-1]["short_name"]
+             coordinates = f"{location['lat'], location['lng']}"
+             
+             #Check if the country is in Europe
+             if country_code in european_countries:
+                 europe_location = (city_name, location["lat"], location["lng"], country_code)
+                 
+              #Check if the country is in Americas or Oceania
+             if country_code in americas_or_oceania_countries:
+                 america_oceania_location = (city_name, location['lat'], location['lng'], country_code)
+         
+         # Check the discovery year for countries in the Americas or Oceania
+         if america_oceania_location:
+             country_code = america_oceania_location[3]
+             discovery_year = year_discovery.get(country_code, None)
+             
+             #If the author died before the discovery year, prioritize Europe
+             if discovery_year and year < discovery_year:
+                 if europe_location:
+                     save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{europe_location[1]}, {europe_location[2]}", europe_location[3], unique_id)
+                     set_flag(city_col, author, europe_location[3], row)
+                     unique_id = assign_unique_id(city_col, author, f"{europe_location[1]}, {europe_location[2]}", id_cache, unique_id)
+                     return europe_location
+                 
+                 else:
+                     #If no European location, prioritize any other non-Americas/Oceania location
+                     other_location = None
+                     
+                     for result in geocode_result:
+                         location = result["geometry"]["location"]
+                         country_code = result["address_components"][-1]["short_name"]
+                         
+                         #Prioritize non-Americas/Oceania countries first
+                         if country_code not in americas_or_oceania_countries and country_code not in european_countries:
+                             other_location = (city_name, location["lat"], location["lng"], country_code)
+                             break
+                         
+                     # If there is another location outuside Americas/Oceania, use it 
+                     if other_location:
+                         save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{other_location[1]}, {other_location[2]}", other_location[3], unique_id)
+                         set_flag(city_col, author, other_location[3], row)
+                         unique_id = assign_unique_id(city_col, author, f"{other_location[1]}, {other_location[2]}", id_cache, unique_id)
+                         return other_location
+                             
+                     # If no other location is found, use Americas/Oceania location
+                     if america_oceania_location:
+                         save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{america_oceania_location[1]}, {america_oceania_location[2]}", america_oceania_location[3], unique_id)
+                         set_flag(city_col, author, america_oceania_location[3], row)
+                         unique_id = assign_unique_id(city_col, author, f"{america_oceania_location[1]}, {america_oceania_location[2]}", id_cache, unique_id)
+                         return america_oceania_location
+             
+             #If the year the author died is after the discovery year 
+             else:
+                 #Use the first result
+                 location = geocode_result[0]['geometry']['location']
+                 country_code = geocode_result[0]['address_components'][-1]['short_name']  # Get the country code
+                 coordinates = f"{location['lat']}, {location['lng']}"
+                 
+                 # Save the city and set the flag based on the discovery year
+                 save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_code, unique_id)
+                 set_flag(city_col, author, country_code, row)
+                 unique_id = assign_unique_id(city_col, author, coordinates, id_cache, unique_id)
+                 return city_name, location['lat'], location['lng'], country_code
+                
+             
+     # Return None if geocoding fail
+     return city_name, None, None, None    
+         
+
+
 # Define a function to map coordinates, country, and city_id to the author_data
 def map_coordinates(df, city_col):
     """
@@ -189,8 +300,6 @@ def map_coordinates(df, city_col):
     df[f'{city_col}_country'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('country', ""))
     df[f'{city_col}_id'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('city_id', ""))
     return df
-
-
 
 # Process rows for year_map. For each row, if the death year is not empty, add it to the "year_map" column, if it is empty, add the "birth_year"+ 60
 for author, row in author_data.iterrows():
@@ -218,118 +327,11 @@ for author, row in author_data.iterrows():
         
         # Check if the city is not in the cache
         if city_name not in geocode_cache:
-                        
+                                   
             #geocode using GooGle Maps API
-            
-            # Modify the geocode_city function to return both coordinates and country
-            def geocode_city(city_name, year):
-                """
-                Geocodes a city using the Google Maps API.
-                
-                Args:
-                    city_name (str): The name of the city to geocode.
-                    year (int): The year for historical context (not used directly in this function).
-                
-                Returns:
-                    tuple: The city name, latitude, longitude, and country code.
-                """
-                time.sleep(1)  # To avoid hitting API limits
-                
-                geocode_result = gmaps.geocode(city_name)
-                
-                #If there is only one result for the city:
-                if len(geocode_result) == 1:
+            print(f"Geocoding city: {city_name}")  # Add a print statement to see the cities being geocoded
+            city_name, lat, lng, country_code = geocode_city(city_name, row['year_map'])  # Call geocode_city
                     
-                    location = geocode_result[0]['geometry']['location']
-                    country_code = geocode_result[0]['address_components'][-1]['short_name']  # Get the country code
-                    coordinates = f"{location['lat']}, {location['lng']}"
-                    
-                    # Save the city and set the flag based on the discovery year
-                    save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_code, unique_id)
-                    set_flag(city_col, author, country_code, row)
-                    unique_id = assign_unique_id(city_col, author, coordinates, id_cache, unique_id)
-                    
-                    
-                    return city_name, location['lat'], location['lng'], country_code
-                
-                #If there are multiple results for the city name
-                elif len(geocode_result) > 1:
-                    europe_location = None
-                    americas_oceania_location = None
-                    
-                    # Loop through the results to check country codes
-                    
-                    for result in geocode_result:
-                        location = result['geometry']['location']
-                        country_code = result["address_components"][-1]["short_name"]
-                        coordinates = f"{location['lat'], location['lng']}"
-                        
-                        #Check if the country is in Europe
-                        if country_code in european_countries:
-                            europe_location = (city_name, location["lat"], location["lng"], country_code)
-                            
-                         #Check if the country is in Americas or Oceania
-                        if country_code in americas_or_oceania_countries:
-                            america_oceania_location = (city_name, location['lat'], location['lng'], country_code)
-                    
-                    # Check the discovery year for countries in the Americas or Oceania
-                    if america_oceania_location:
-                        country_code = america_oceania_location[3]
-                        discovery_year = year_discovery.get(country_code, None)
-                        
-                        #If the author died before the discovery year, prioritize Europe
-                        if discovery_year and year < discovery_year:
-                            if europe_location:
-                                save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{europe_location[1]}, {europe_location[2]}", europe_location[3], unique_id)
-                                set_flag(city_col, author, europe_location[3], row)
-                                unique_id = assign_unique_id(city_col, author, f"{europe_location[1]}, {europe_location[2]}", id_cache, unique_id)
-                                return europe_location
-                            
-                            else:
-                                #If no European location, prioritize any other non-Americas/Oceania location
-                                other_location = None
-                                
-                                for result in geocode_result:
-                                    location = result["geometry"]["location"]
-                                    country_code = result["address_components"][-1]["short_name"]
-                                    
-                                    #Prioritize non-Americas/Oceania countries first
-                                    if country_code not in americas_or_oceania_countries and country_code not in european_countries:
-                                        other_location = (city_name, location["lat"], location["lng"], country_code)
-                                        break
-                                    
-                                # If there is another location outuside Americas/Oceania, use it 
-                                if other_location:
-                                    save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{other_location[1]}, {other_location[2]}", other_location[3], unique_id)
-                                    set_flag(city_col, author, other_location[3], row)
-                                    unique_id = assign_unique_id(city_col, author, f"{other_location[1]}, {other_location[2]}", id_cache, unique_id)
-                                    return other_location
-                                        
-                                # If no other location is found, use Americas/Oceania location
-                                if america_oceania_location:
-                                    save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{america_oceania_location[1]}, {america_oceania_location[2]}", america_oceania_location[3], unique_id)
-                                    set_flag(city_col, author, america_oceania_location[3], row)
-                                    unique_id = assign_unique_id(city_col, author, f"{america_oceania_location[1]}, {america_oceania_location[2]}", id_cache, unique_id)
-                                    return america_oceania_location
-                        
-                        #If the year the author died is after the discovery year 
-                        else:
-                            #Use the first result
-                            location = geocode_result[0]['geometry']['location']
-                            country_code = geocode_result[0]['address_components'][-1]['short_name']  # Get the country code
-                            coordinates = f"{location['lat']}, {location['lng']}"
-                            
-                            # Save the city and set the flag based on the discovery year
-                            save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_code, unique_id)
-                            set_flag(city_col, author, country_code, row)
-                            unique_id = assign_unique_id(city_col, author, coordinates, id_cache, unique_id)
-                            return city_name, location['lat'], location['lng'], country_code
-                           
-                        
-                # Return None if geocoding fail
-                return city_name, None, None, None    
-                    
-            
        # If there is a city with the same name in the cache:
         else:     
             # Retrieve all cached results for cities with the same name
@@ -385,7 +387,9 @@ for author, row in author_data.iterrows():
             author_data.at[author, f'{city_col}_country'] = cached_data['country']
             author_data.at[author, f'{city_col}_id'] = cached_data.get('city_id', None)
             set_flag(city_col, author, cached_data['country'], row)
-  
+            
+
+            
 # Apply mapping to all city columns (borncity, deathcity, activecity)
 city_columns = ['borncity', 'deathcity', 'activecity']
 for city_col in city_columns:
