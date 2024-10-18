@@ -71,6 +71,8 @@ year_discovery = {
 }
 
 
+
+
 # Add necessary columns
 author_data['year_map'] = ""
 author_data['borncity_coordinates'] = ""
@@ -85,6 +87,16 @@ author_data['activecity_americas_or_oceania_before_discovery'] = ""
 author_data['born_cityid'] = ""
 author_data['death_cityid'] = ""
 author_data['active_cityid'] = ""
+
+
+
+# UTF-8 encoding for city columns 
+author_data['borncity'] = author_data['borncity'].apply(lambda x: str(x).encode('utf-8').decode('utf-8') if isinstance(x, str) else x)
+author_data['deathcity'] = author_data['deathcity'].apply(lambda x: str(x).encode('utf-8').decode('utf-8') if isinstance(x, str) else x)
+author_data['activecity'] = author_data['activecity'].apply(lambda x: str(x).encode('utf-8').decode('utf-8') if isinstance(x, str) else x)
+
+print(author_data['borncity'].head())
+
 
 
 # Define a function to save city data and assign city_id
@@ -111,6 +123,7 @@ def save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordi
     elif city_col == 'activecity':
         author_data.at[author, 'active_cityid'] = unique_id
     save_cache()
+
 
 
         
@@ -146,8 +159,9 @@ def set_flag(city_col, author, country, row):
         
 
 
+
 # Define a function to assign unique ID
-def assign_unique_id(city_col, author, coordinates, id_cache, unique_id):
+def assign_unique_id(city_col, author, coordinates, id_cache):
     """
     Assigns a unique ID to a city based on its coordinates. If the coordinates are already in the cache, 
     the cached ID is assigned, otherwise a new ID is generated.
@@ -157,18 +171,22 @@ def assign_unique_id(city_col, author, coordinates, id_cache, unique_id):
         author (int): The row index of the author in the dataset.
         coordinates (str): The geocoded coordinates of the city.
         id_cache (dict): Cache mapping coordinates to unique IDs.
-        unique_id (int): The current unique ID counter.
     
     Returns:
-        int: Updated unique ID counter. 
+        unique_id (int): The assigned or cached unique ID.
     """
+    global unique_id  # Access the global unique ID counter
+
     if coordinates not in id_cache:
         id_cache[coordinates] = unique_id
         author_data.at[author, f'{city_col}_id'] = unique_id
-        unique_id += 1
+        unique_id += 1  # Increment the ID counter for the next city
     else:
         author_data.at[author, f'{city_col}_id'] = id_cache[coordinates]
-    return unique_id
+
+    return unique_id  # Return the unique_id (either new or cached)
+
+
 
 
  # Modify the geocode_city function to return both coordinates and country
@@ -187,6 +205,10 @@ def geocode_city(city_name, year):
      
      geocode_result = gmaps.geocode(city_name)
      
+     # Initialize variables before condition checks
+     europe_location = None
+     america_oceania_location = None
+     
      #If there is only one result for the city:
      if len(geocode_result) == 1:
          
@@ -194,10 +216,13 @@ def geocode_city(city_name, year):
          country_code = geocode_result[0]['address_components'][-1]['short_name']  # Get the country code
          coordinates = f"{location['lat']}, {location['lng']}"
          
+         # Generate a unique city_id based on coordinates and assign it
+         unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
+         
          # Save the city and set the flag based on the discovery year
          save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_code, unique_id)
          set_flag(city_col, author, country_code, row)
-         unique_id = assign_unique_id(city_col, author, coordinates, id_cache, unique_id)
+         
          
          
          return city_name, location['lat'], location['lng'], country_code
@@ -230,9 +255,12 @@ def geocode_city(city_name, year):
              #If the author died before the discovery year, prioritize Europe
              if discovery_year and year < discovery_year:
                  if europe_location:
+                     
+                     unique_id = assign_unique_id(city_col, author, f"{europe_location[1]}, {europe_location[2]}", id_cache)
+                     
                      save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{europe_location[1]}, {europe_location[2]}", europe_location[3], unique_id)
                      set_flag(city_col, author, europe_location[3], row)
-                     unique_id = assign_unique_id(city_col, author, f"{europe_location[1]}, {europe_location[2]}", id_cache, unique_id)
+                     
                      return europe_location
                  
                  else:
@@ -250,16 +278,20 @@ def geocode_city(city_name, year):
                          
                      # If there is another location outuside Americas/Oceania, use it 
                      if other_location:
+                         
+                         unique_id = assign_unique_id(city_col, author, f"{other_location[1]}, {other_location[2]}", id_cache)
                          save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{other_location[1]}, {other_location[2]}", other_location[3], unique_id)
                          set_flag(city_col, author, other_location[3], row)
-                         unique_id = assign_unique_id(city_col, author, f"{other_location[1]}, {other_location[2]}", id_cache, unique_id)
+                         
                          return other_location
                              
                      # If no other location is found, use Americas/Oceania location
                      if america_oceania_location:
+                         
+                         unique_id = assign_unique_id(city_col, author, f"{america_oceania_location[1]}, {america_oceania_location[2]}", id_cache)
                          save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{america_oceania_location[1]}, {america_oceania_location[2]}", america_oceania_location[3], unique_id)
                          set_flag(city_col, author, america_oceania_location[3], row)
-                         unique_id = assign_unique_id(city_col, author, f"{america_oceania_location[1]}, {america_oceania_location[2]}", id_cache, unique_id)
+                         
                          return america_oceania_location
              
              #If the year the author died is after the discovery year 
@@ -270,9 +302,11 @@ def geocode_city(city_name, year):
                  coordinates = f"{location['lat']}, {location['lng']}"
                  
                  # Save the city and set the flag based on the discovery year
+                 
+                 unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
                  save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_code, unique_id)
                  set_flag(city_col, author, country_code, row)
-                 unique_id = assign_unique_id(city_col, author, coordinates, id_cache, unique_id)
+                 
                  return city_name, location['lat'], location['lng'], country_code
                 
              
@@ -300,6 +334,8 @@ def map_coordinates(df, city_col):
     df[f'{city_col}_country'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('country', ""))
     df[f'{city_col}_id'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('city_id', ""))
     return df
+
+
 
 # Process rows for year_map. For each row, if the death year is not empty, add it to the "year_map" column, if it is empty, add the "birth_year"+ 60
 for author, row in author_data.iterrows():
@@ -331,6 +367,7 @@ for author, row in author_data.iterrows():
             #geocode using GooGle Maps API
             print(f"Geocoding city: {city_name}")  # Add a print statement to see the cities being geocoded
             city_name, lat, lng, country_code = geocode_city(city_name, row['year_map'])  # Call geocode_city
+            
                     
        # If there is a city with the same name in the cache:
         else:     
@@ -396,13 +433,13 @@ for city_col in city_columns:
     author_data = map_coordinates(author_data, city_col)
 
 # Reorder the columns, placing city_id before coordinates
-cols = ['born_cityid', 'borncity_coordinates', 'borncity_country', 'borncity_americas_or_oceania_before_discovery', 
-        'death_cityid', 'deathcity_coordinates', 'deathcity_country', 'deathcity_americas_or_oceania_before_discovery', 
+cols = ['born_cityid', 'borncity_coordinates', 'borncity_country',  'borncity_americas_or_oceania_before_discovery', "deathcity", 
+        'death_cityid', 'deathcity_coordinates', 'deathcity_country', 'deathcity_americas_or_oceania_before_discovery', "activecity",
         'active_cityid', 'activecity_coordinates', 'activecity_country', 'activecity_americas_or_oceania_before_discovery']
 
 # Reorder DataFrame columns
 author_data = author_data[['indexauthor', 'starturl', 'birthyear', 'deathyear', 'nameandbirthdeathyear', 
-                               'georeferenceurl', 'borncity', 'deathcity', 'activecity'] + cols]
+                               'georeferenceurl', 'borncity'] + cols]
 
 # Save the DataFrame with the geocoded results
 output_file_csv = 'path/to/your/output_file.csv'  # Save CSV
@@ -414,167 +451,3 @@ geocoded_data.to_excel(output_file_excel, index=False)
 print("Geocoding completed and files saved.")
 
 
-
-
-# # Function to save cache incrementally
-# def save_cache():
-#     """
-#     Saves the current state of the geocoded data cache incrementally to a CSV file.
-#     The cache stores previously geocoded city data (city name, coordinates, and country).
-#     """
-#     cache_df = pd.DataFrame.from_dict(geocode_cache, orient='index')
-#     cache_df.reset_index(inplace=True)
-#     cache_df.columns = ['city', 'coordinates', 'country', 'country_code']
-#     cache_df.to_csv(cache_file, index=False)
-
-# # List of country codes for Americas and Oceania
-# americas_oceania_countries = [
-#     'US', 'CA', 'MX', 'GT', 'BZ', 'SV', 'HN', 'NI', 'CR', 'PA',  # North America & Central America
-#     'CO', 'VE', 'GY', 'SR', 'BR', 'PE', 'BO', 'CL', 'AR', 'UY', 'PY', 'EC',  # South America
-#     'CU', 'HT', 'DO', 'JM', 'BS', 'TT', 'BB', 'AG', 'DM', 'GD', 'LC', 'VC', 'KN',  # Caribbean
-#     'AU', 'NZ', 'FJ', 'PG', 'SB', 'VU', 'WS', 'TO', 'KI', 'TV', 'NR', 'PW', 'FM', 'MH'  # Oceania
-# ]
-
-# # List of country codes for Europe
-# european_countries = [
-#     'AL', 'AD', 'AM', 'AT', 'BY', 'BE', 'BA', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'GE',
-#     'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'KZ', 'XK', 'LV', 'LI', 'LT', 'LU', 'MT', 'MD', 'MC', 'ME',
-#     'NL', 'MK', 'NO', 'PL', 'PT', 'RO', 'RU', 'SM', 'RS', 'SK', 'SI', 'ES', 'SE', 'CH', 'UA', 'GB'
-# ]
-
-# # Function to geocode with Europe constraint for cities before 1500
-# def geocode_city(city_name, year):
-#     """
-#     Geocodes a city name using the Google Maps API, prioritizing locations in Europe if the year is <= 1500.
-    
-#     Args:
-#         city_name (str): The name of the city to geocode.
-#         year (int): The year of relevance (e.g., birth year or death year).
-    
-#     Returns:
-#         tuple: Contains the city name, coordinates (latitude, longitude), country name, and country code.
-#     """
-#     time.sleep(1)  # Rate limiting
-    
-#     # Geocode the city
-#     geocode_result = gmaps.geocode(city_name)
-    
-#     if geocode_result:
-#         europe_location = None
-#         country_name = None
-#         country_code = None # Get country code for more precise identification
-
-#         for result in geocode_result:
-#             address_components = result['address_components']
-#             for component in address_components:
-#                 # Extract the country name and country code from the address components
-#                 if 'country' in component['types']:
-#                     country_name = component['long_name']
-#                     country_code = component['short_name']
-                
-#                 # Check if location is in Europe (using country codes for Europe)
-#                 if country_code in european_countries:
-#                     europe_location = result['geometry']['location']
-#                     break  # Prioritize European location if found
-
-#         # If European location is found and year <= 1500, use European location
-#         if year <= 1500 and europe_location:
-#             return city_name, (europe_location['lat'], europe_location['lng']), country_name, country_code
-        
-#         # Otherwise, use the first result
-#         location = geocode_result[0]['geometry']['location']
-#         return city_name, (location['lat'], location['lng']), country_name, country_code
-    
-#     # Return None if no result found
-#     return city_name, (None, None), None, None
-
-# # Step 1: Identify unique city names across columns for geocoding
-# city_columns = ['borncity', 'deathcity', 'activecity']
-
-# # Step 2: Create new columns to track incorrect geocodes in the Americas or Oceania before 1500 for each location type
-# geocoded_data['borncity_americas_or_oceania_before_1500'] = ""
-# geocoded_data['deathcity_americas_or_oceania_before_1500'] = ""
-# geocoded_data['activecity_americas_or_oceania_before_1500'] = ""
-
-# # Step 3: Go through each city in each column and build the geocoding cache
-# for _, row in geocoded_data.iterrows():
-#     for city_col, flag_col in [('borncity', 'borncity_americas_or_oceania_before_1500'), 
-#                                ('deathcity', 'deathcity_americas_or_oceania_before_1500'), 
-#                                ('activecity', 'activecity_americas_or_oceania_before_1500')]:
-        
-#         city = row[city_col]
-#         # Prioritize deathyear, and if not available, use birthyear + 60 as an estimate
-#         year = row['deathyear'] if pd.notna(row['deathyear']) else (row['birthyear'] + 60 if pd.notna(row['birthyear']) else None)
-        
-#         if pd.notna(city):  # If city is not missing
-#             if city not in geocode_cache:
-#                 # Geocode city with constraints if not cached
-#                 city_name, coordinates, country, country_code = geocode_city(city, year)
-#                 if coordinates != (None, None):  # Save successful geocoding
-#                     geocode_cache[city] = {'coordinates': coordinates, 'country': country, 'country_code': country_code}
-#                     save_cache()  # Save incrementally after each city
-#                 else:
-#                     # If geocoding failed, set placeholder value
-#                     print(f"Geocoding failed for city: {city}")
-#                     geocode_cache[city] = {'coordinates': (None, None), 'country': None, 'country_code': None}
-            
-#             # Now safely access the cached city data
-#             cached_city = geocode_cache.get(city, {})
-            
-#             # Check if 'country_code' exists in the cache, if not skip or handle it
-#             country_code = cached_city.get('country_code', None)
-#             if country_code is None:
-#                 print(f"Missing country code for city: {city}")
-#                 continue  # Skip this city if country code is missing
-            
-#             # Check if the city is in Americas/Oceania and the year is before 1500
-#             is_in_americas_or_oceania = country_code in americas_oceania_countries
-#             before_1500 = year <= 1500 if year else False
-            
-#             # Set the flag dynamically
-#             if before_1500 and is_in_americas_or_oceania:
-#                 geocoded_data.at[_, flag_col] = "yes"
-#             else:
-#                 geocoded_data.at[_, flag_col] = "no"
-
-# # Step 4: Map the geocoded coordinates and country back to the DataFrame
-# def map_coordinates(df, city_col):
-#     """
-#     Maps the geocoded coordinates and country information back to the DataFrame 
-#     based on previously cached geocode results.
-    
-#     Args:
-#         df (pd.DataFrame): The DataFrame containing the city data.
-#         city_col (str): The column name for the city (e.g., 'borncity', 'deathcity', or 'activecity').
-    
-#     Returns:
-#         pd.DataFrame: Updated DataFrame with the coordinates and country mapped.
-#     """
-   
-#     df[f'{city_col}_coordinates'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('coordinates', ""))
-#     df[f'{city_col}_country'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('country', ""))
-    
-#     return df
-
-# # Apply mapping to all city columns (borncity, deathcity, activecity)
-# for city_col in city_columns:
-#     geocoded_data = map_coordinates(geocoded_data, city_col)
-
-# # Step 5: Reorder the columns to place americas_or_oceania_before_1500 after the country columns
-# cols = ['borncity_coordinates', 'borncity_country', 'borncity_americas_or_oceania_before_1500', 
-#         'deathcity_coordinates', 'deathcity_country', 'deathcity_americas_or_oceania_before_1500', 
-#         'activecity_coordinates', 'activecity_country', 'activecity_americas_or_oceania_before_1500']
-
-# # Reorder DataFrame columns
-# geocoded_data = geocoded_data[['indexauthor', 'starturl', 'birthyear', 'deathyear', 'nameandbirthdeathyear', 
-#                                'georeferenceurl', 'borncity', 'deathcity', 'activecity'] + cols]
-
-
-# # Step 4: Save the DataFrame with the geocoded results
-# output_file_csv = 'path/to/your/output_file.csv'  # Save CSV
-# output_file_excel = 'path/to/your/output_file.xlsx'  # Save Excel
-
-# geocoded_data.to_csv(output_file_csv, index=False)
-# geocoded_data.to_excel(output_file_excel, index=False)
-
-# print("Geocoding completed and files saved.")
