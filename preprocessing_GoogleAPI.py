@@ -43,7 +43,7 @@ def save_cache():
     cache_df = pd.DataFrame.from_dict(geocode_cache, orient='index')
     cache_df.reset_index(inplace=True)
     cache_df.columns = ['city', 'coordinates', 'country', 'city_id']
-    cache_df.to_csv(cache_file, index=False)
+    cache_df.to_csv(cache_file, index=False, encoding='utf-8')
 
 americas_or_oceania_countries = [
     'US', 'CA', 'MX', 'GT', 'BZ', 'SV', 'HN', 'NI', 'CR', 'PA',  # North America & Central America
@@ -83,9 +83,9 @@ author_data['activecity_country'] = ""
 author_data['borncity_americas_or_oceania_before_discovery'] = ""
 author_data['deathcity_americas_or_oceania_before_discovery'] = ""
 author_data['activecity_americas_or_oceania_before_discovery'] = ""
-author_data['born_cityid'] = ""
-author_data['death_cityid'] = ""
-author_data['active_cityid'] = ""
+author_data['born_city_id'] = ""
+author_data['death_city_id'] = ""
+author_data['active_city_id'] = ""
 
 
 # UTF-8 encoding for city columns 
@@ -112,11 +112,11 @@ def save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordi
     """
     geocode_cache[cache_key] = {'coordinates': coordinates, 'country': country, 'city_id': unique_id}
     if city_col == 'borncity':
-        author_data.at[author, 'born_cityid'] = unique_id
+        author_data.at[author, 'born_city_id'] = unique_id
     elif city_col == 'deathcity':
-        author_data.at[author, 'death_cityid'] = unique_id
+        author_data.at[author, 'death_city_id'] = unique_id
     elif city_col == 'activecity':
-        author_data.at[author, 'active_cityid'] = unique_id
+        author_data.at[author, 'active_city_id'] = unique_id
     save_cache()
 
         
@@ -213,7 +213,7 @@ def geocode_city(city_name, year):
          unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
          
          # Save the city and set the flag based on the discovery year
-         print(f"(Geocoded) Saving city {city_name} with only 1 result in Europe to cache with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
+         print(f"(Geocoded) Saving city {city_name} to cache. It has only 1 geocoding result. Coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
          save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_code, unique_id)
          set_flag(city_col, author, country_code, row)
          
@@ -251,7 +251,7 @@ def geocode_city(city_name, year):
                  if europe_location:
                      
                      unique_id = assign_unique_id(city_col, author, f"{europe_location[1]}, {europe_location[2]}", id_cache)
-                     print(f"(Geocoded) Saving city {city_name} with more than 1 result in Europe to cache with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
+                     print(f"(Geocoded) Saving city {city_name} to cache. It has more than 1 result for this name. Geocoded in Europe with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
                      save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{europe_location[1]}, {europe_location[2]}", europe_location[3], unique_id)
                      set_flag(city_col, author, europe_location[3], row)
                      
@@ -274,7 +274,7 @@ def geocode_city(city_name, year):
                      if other_location:
                          
                          unique_id = assign_unique_id(city_col, author, f"{other_location[1]}, {other_location[2]}", id_cache)
-                         print(f" (Geocoded) Saving city {city_name} with more than 1 result in other location than Americas/Oceania to cache with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
+                         print(f" (Geocoded) Saving city {city_name} to cache.  It has more than 1 result for this name. Geocoded outside Europe and Americas/Oceania with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
                          save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{other_location[1]}, {other_location[2]}", other_location[3], unique_id)
                          set_flag(city_col, author, other_location[3], row)
                          
@@ -345,6 +345,7 @@ author_data['year_map'] = pd.to_numeric(author_data['year_map'], errors='coerce'
 unique_id = 1
 id_cache = {}
 
+
 # In each row, go through each city in each column (born, death and active). If empty return None
 for author, row in author_data.iterrows():
     for city_col in ['borncity', 'deathcity', 'activecity']:
@@ -370,7 +371,13 @@ for author, row in author_data.iterrows():
             
                     
        # If there is a city with the same name in the cache:
-        else:     
+        else:
+            """  
+            In the geocoding function, if a city name has more than one location, all of them should be storaged in cache. 
+            But I could not make that work.So only one result is being storaged.
+            
+            """
+            
             # Retrieve all cached results for cities with the same name
             cached_results = geocode_cache[cache_key]
             
@@ -389,6 +396,7 @@ for author, row in author_data.iterrows():
                 country = cached_data['country']
                 coordinates = cached_data['coordinates']
                 city_id = cached_data.get('city_id', None)
+                # city_id = cached_data.get['city_id']
         
                 # Check if the country is in Europe
                 if country in european_countries:
@@ -408,20 +416,20 @@ for author, row in author_data.iterrows():
                 
                 # If the author died before the discovery year, prioritize Europe
                 if discovery_year and row['year_map'] < discovery_year:
-                    print(f"(Cache) More than one result for {city_name} and the Author died before discovery year {discovery_year} for country {america_oceania_location['country']}")
+                    print(f"(Cache) Using {city_name}. The Author died in {row['year_map']}, before discovery year {discovery_year} for country {america_oceania_location['country']}")
                     
                     if europe_location:
-                        print(f" (Cache) Prioritizing European location for {city_name} with coordinates: {europe_location['coordinates']}")
+                        print(f" (Cache) Using {city_name} located in Europe with coordinates: {europe_location['coordinates']}")
                         cached_data = europe_location
                     elif other_location:
-                        print(f"(Cache) No European location found. Using location outise Americas/Oceania for {city_name} with coordinates: {other_location['coordinates']}")
+                        print(f"(Cache) Using {city_name} located outside Americas/Oceania with coordinates: {other_location['coordinates']}")
                         cached_data = other_location
                     else:
-                        print(f"(Cache) No European or outside Americas/Oceania location found. Using Americas/Oceania location for {city_name} with coordinates: {america_oceania_location['coordinates']}")
+                        print(f"(Cache)  Using {city_name} located in Americas/Oceania with coordinates: {america_oceania_location['coordinates']}")
                         cached_data = america_oceania_location
                 else:
                     # If the author died after the discovery year, use the first result
-                    print(f" (Cache) Author died after discovery year {discovery_year}. Using first cached result for {city_name}.")
+                    print(f" (Cache) Using first cached result for {city_name}. Author died in {row['year_map']}, after discovery year {discovery_year} of {country}. ")
                     cached_data = cached_results[0]
 
             
@@ -429,6 +437,7 @@ for author, row in author_data.iterrows():
             author_data.at[author, f'{city_col}_coordinates'] = cached_data['coordinates']
             author_data.at[author, f'{city_col}_country'] = cached_data['country']
             author_data.at[author, f'{city_col}_id'] = cached_data['city_id']
+            # author_data.at[author, f'{city_col}_id'] = cached_data.get('city_id', None)
             set_flag(city_col, author, cached_data['country'], row)
             
 
@@ -439,9 +448,9 @@ for city_col in city_columns:
     author_data = map_coordinates(author_data, city_col)
 
 # Reorder the columns, placing city_id before coordinates
-cols = ['born_cityid', 'borncity_coordinates', 'borncity_country',  'borncity_americas_or_oceania_before_discovery', "deathcity", 
-        'death_cityid', 'deathcity_coordinates', 'deathcity_country', 'deathcity_americas_or_oceania_before_discovery', "activecity",
-        'active_cityid', 'activecity_coordinates', 'activecity_country', 'activecity_americas_or_oceania_before_discovery']
+cols = ['born_city_id', 'borncity_coordinates', 'borncity_country',  'borncity_americas_or_oceania_before_discovery', "deathcity", 
+        'death_city_id', 'deathcity_coordinates', 'deathcity_country', 'deathcity_americas_or_oceania_before_discovery', "activecity",
+        'active_city_id', 'activecity_coordinates', 'activecity_country', 'activecity_americas_or_oceania_before_discovery']
 
 # Reorder DataFrame columns
 author_data = author_data[['indexauthor', 'starturl', 'birthyear', 'deathyear',"year_map", 'nameandbirthdeathyear', 
