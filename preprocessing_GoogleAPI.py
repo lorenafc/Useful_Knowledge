@@ -228,10 +228,29 @@ def geocode_city(city_name, year):
          
          # Loop through the results to check country codes
          
-         for result in geocode_result:
-             location = result['geometry']['location']
-             country_code = result["address_components"][-1]["short_name"]
-             coordinates = f"{location['lat'], location['lng']}"
+         # It storages all the geocoded results when there is a city with the same name in more than one location
+         for i, result in enumerate(geocode_result):
+              location = result['geometry']['location']
+              country_code = result["address_components"][-1]["short_name"]
+              coordinates = f"{location['lat']}, {location['lng']}"
+     
+               # Print debugging information
+              print(f"Handling multiple geocoding results for {city_name}, result {i+1}: Coordinates: {coordinates}, Country: {country_code}")
+         
+               # Create a unique cache key for each location
+              unique_cache_key = f"{city_name}_{coordinates}"
+     
+               # Assign a unique ID for each result
+              unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
+         
+              # Store each result in the cache with a unique city_id
+              print(f"Saving city {city_name} with more than 1 result to cache with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
+              save_city_data_and_assign_city_id_column(city_col, author, unique_cache_key, coordinates, country_code, unique_id)
+         
+         # for result in geocode_result:
+         #     location = result['geometry']['location']
+         #     country_code = result["address_components"][-1]["short_name"]
+         #     coordinates = f"{location['lat'], location['lng']}"
              
              #Check if the country is in Europe
              if country_code in european_countries:
@@ -372,11 +391,6 @@ for author, row in author_data.iterrows():
                     
        # If there is a city with the same name in the cache:
         else:
-            """  
-            In the geocoding function, if a city name has more than one location, all of them should be storaged in cache. 
-            But I could not make that work.So only one result is being storaged.
-            
-            """
             
             # Retrieve all cached results for cities with the same name
             cached_results = geocode_cache[cache_key]
