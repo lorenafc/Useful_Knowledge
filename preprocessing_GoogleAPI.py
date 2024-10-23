@@ -428,7 +428,7 @@ for author, row in author_data.iterrows():
             # Add the cached data to the authors dataframe
             author_data.at[author, f'{city_col}_coordinates'] = cached_data['coordinates']
             author_data.at[author, f'{city_col}_country'] = cached_data['country']
-            author_data.at[author, f'{city_col}_id'] = cached_data.get('city_id', None)
+            author_data.at[author, f'{city_col}_id'] = cached_data['city_id']
             set_flag(city_col, author, cached_data['country'], row)
             
 
