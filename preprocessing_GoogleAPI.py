@@ -198,7 +198,7 @@ def geocode_city(city_name, year):
      
      geocode_result = gmaps.geocode(city_name)
      
-     # Check if there are no geocoding results # if I add this here, can I remove 
+     # Check if there are no geocoding results  
      if len(geocode_result) == 0:
         print(f"(Not geocoded) City {city_name} could not be geocoded. No coordinates were returned.")
         return city_name, None, None, None
