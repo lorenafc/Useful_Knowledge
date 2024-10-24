@@ -198,6 +198,11 @@ def geocode_city(city_name, year):
      
      geocode_result = gmaps.geocode(city_name)
      
+     # Check if there are no geocoding results # if I add this here, can I remove 
+     if len(geocode_result) == 0:
+        print(f"(Not geocoded) City {city_name} could not be geocoded. No coordinates were returned.")
+        return city_name, None, None, None
+     
      # Initialize variables before condition checks
      europe_location = None
      america_oceania_location = None
@@ -382,12 +387,7 @@ for author, row in author_data.iterrows():
                                    
             #geocode using GooGle Maps API
             print(f"Geocoding city: {city_name}")  # Add a print statement to see the cities being geocoded
-            city_name, lat, lng, country_code = geocode_city(city_name, row['year_map'])  # Call geocode_city
-            
-            if lat is None or lng is None:
-                print(f"City {city_name} could not be geocoded. No coordinates were returned.")
-                continue  # just continue to the next city
-            
+            city_name, lat, lng, country_code = geocode_city(city_name, row['year_map'])  # Call geocode_city        
                     
        # If there is a city with the same name in the cache:
         else:
