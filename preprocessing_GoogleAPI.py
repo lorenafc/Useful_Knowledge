@@ -83,9 +83,9 @@ author_data['activecity_country'] = ""
 author_data['borncity_americas_or_oceania_before_discovery'] = ""
 author_data['deathcity_americas_or_oceania_before_discovery'] = ""
 author_data['activecity_americas_or_oceania_before_discovery'] = ""
-author_data['born_city_id'] = ""
-author_data['death_city_id'] = ""
-author_data['active_city_id'] = ""
+author_data['borncity_city_id'] = ""
+author_data['deathcity_city_id'] = ""
+author_data['activecity_city_id'] = ""
 
 
 # UTF-8 encoding for city columns 
@@ -112,11 +112,11 @@ def save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordi
     """
     geocode_cache[cache_key] = {'coordinates': coordinates, 'country': country, 'city_id': unique_id}
     if city_col == 'borncity':
-        author_data.at[author, 'born_city_id'] = unique_id
+        author_data.at[author, 'borncity_city_id'] = unique_id
     elif city_col == 'deathcity':
-        author_data.at[author, 'death_city_id'] = unique_id
+        author_data.at[author, 'deathcity_city_id'] = unique_id
     elif city_col == 'activecity':
-        author_data.at[author, 'active_city_id'] = unique_id
+        author_data.at[author, 'activecity_city_id'] = unique_id
     save_cache()
 
         
@@ -443,9 +443,9 @@ for city_col in city_columns:
     author_data = map_coordinates(author_data, city_col)
 
 # Reorder the columns, placing city_id before coordinates
-cols = ['born_city_id', 'borncity_coordinates', 'borncity_country',  'borncity_americas_or_oceania_before_discovery', "deathcity", 
-        'death_city_id', 'deathcity_coordinates', 'deathcity_country', 'deathcity_americas_or_oceania_before_discovery', "activecity",
-        'active_city_id', 'activecity_coordinates', 'activecity_country', 'activecity_americas_or_oceania_before_discovery']
+cols = ['borncity_city_id', 'borncity_coordinates', 'borncity_country',  'borncity_americas_or_oceania_before_discovery', "deathcity", 
+        'deathcity_city_id', 'deathcity_coordinates', 'deathcity_country', 'deathcity_americas_or_oceania_before_discovery', "activecity",
+        'activecity_city_id', 'activecity_coordinates', 'activecity_country', 'activecity_americas_or_oceania_before_discovery']
 
 # Reorder DataFrame columns
 author_data = author_data[['indexauthor', 'starturl', 'birthyear', 'deathyear',"year_map", 'nameandbirthdeathyear', 
@@ -471,7 +471,7 @@ yes_flag = (
     (author_data["activecity_americas_or_oceania_before_discovery"] == "yes")
 )
 
-# Create the df excluding the rows flagged with with "yes"
+# Create the df excluding the rows flagged with with "yes" (authors geocoded in a country before the country was disvovered)
 authors_without_yes_flag = author_data.loc[~yes_flag]
 
 # save the result to excel an csv file
