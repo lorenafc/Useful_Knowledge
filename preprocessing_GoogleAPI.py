@@ -182,7 +182,8 @@ def assign_unique_id(city_col, author, coordinates, id_cache):
 
 
 
- # Modify the geocode_city function to return both coordinates and country
+          
+# Modify the geocode_city function to return both coordinates and country
 def geocode_city(city_name, year):
      """
      Geocodes a city using the Google Maps API.
@@ -198,7 +199,7 @@ def geocode_city(city_name, year):
      
      geocode_result = gmaps.geocode(city_name)
      
-     # Check if there are no geocoding results  
+     # Check if there are no geocoding results
      if len(geocode_result) == 0:
         print(f"(Not geocoded) City {city_name} could not be geocoded. No coordinates were returned.")
         return city_name, None, None, None
@@ -230,17 +231,16 @@ def geocode_city(city_name, year):
      elif len(geocode_result) > 1:
          europe_location = None
          americas_oceania_location = None
-         
-         # Loop through the results to check country codes
-         
-         # It storages all the geocoded results when there is a city with the same name in more than one location
+           
+        #Loop through the results to check country codes
+     
          for i, result in enumerate(geocode_result):
               location = result['geometry']['location']
               country_code = result["address_components"][-1]["short_name"]
               coordinates = f"{location['lat']}, {location['lng']}"
      
                # Print debugging information
-              print(f"Handling multiple geocoding results for {city_name}, result {i+1}: Coordinates: {coordinates}, Country: {country_code}")
+              print(f"(Geocoded) Multiple geocoding results for {city_name}, result {i+1}: Coordinates: {coordinates}, Country: {country_code}")
          
                # Create a unique cache key for each location
               unique_cache_key = f"{city_name}_{coordinates}"
@@ -251,19 +251,20 @@ def geocode_city(city_name, year):
               # Store each result in the cache with a unique city_id
               print(f"Saving city {city_name} with more than 1 result to cache with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
               save_city_data_and_assign_city_id_column(city_col, author, unique_cache_key, coordinates, country_code, unique_id)
+      
          
-         # for result in geocode_result:
-         #     location = result['geometry']['location']
-         #     country_code = result["address_components"][-1]["short_name"]
-         #     coordinates = f"{location['lat'], location['lng']}"
+          # for result in geocode_result:
+          #     location = result['geometry']['location']
+          #     country_code = result["address_components"][-1]["short_name"]
+          #     coordinates = f"{location['lat'], location['lng']}"
              
              #Check if the country is in Europe
-             if country_code in european_countries:
-                 europe_location = (city_name, location["lat"], location["lng"], country_code)
+              if country_code in european_countries:
+                  europe_location = (city_name, location["lat"], location["lng"], country_code)
                  
               #Check if the country is in Americas or Oceania
-             if country_code in americas_or_oceania_countries:
-                 america_oceania_location = (city_name, location['lat'], location['lng'], country_code)
+              if country_code in americas_or_oceania_countries:
+                  america_oceania_location = (city_name, location['lat'], location['lng'], country_code)
          
          # Check the discovery year for countries in the Americas or Oceania
          if america_oceania_location:
@@ -313,26 +314,6 @@ def geocode_city(city_name, year):
                          set_flag(city_col, author, america_oceania_location[3], row)
                          
                          return america_oceania_location
-             
-             #If the year the author died is after the discovery year 
-             else:
-                 #Use the first result
-                 location = geocode_result[0]['geometry']['location']
-                 country_code = geocode_result[0]['address_components'][-1]['short_name']  # Get the country code
-                 coordinates = f"{location['lat']}, {location['lng']}"
-                 
-                 # Save the city and set the flag based on the discovery year
-                 print(f"(Geocoded) Saving city {city_name} with more than 1 result with first result of Google Maps (year after discovery) to cache with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
-                 unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
-                 save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_code, unique_id)
-                 set_flag(city_col, author, country_code, row)
-                 
-                 return city_name, location['lat'], location['lng'], country_code
-                
-             
-     # Return None if geocoding fail
-     return city_name, None, None, None    
-         
 
 
 # Define a function to map coordinates, country, and city_id to the author_data
