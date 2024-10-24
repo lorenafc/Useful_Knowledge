@@ -172,10 +172,10 @@ def assign_unique_id(city_col, author, coordinates, id_cache):
 
     if coordinates not in id_cache:
         id_cache[coordinates] = unique_id
-        author_data.at[author, f'{city_col}_id'] = unique_id
+        author_data.at[author, f'{city_col}_city_id'] = unique_id
         unique_id += 1  # Increment the ID counter for the next city
     else:
-        author_data.at[author, f'{city_col}_id'] = id_cache[coordinates]
+        author_data.at[author, f'{city_col}_city_id'] = id_cache[coordinates]
 
     return unique_id  # Return the unique_id (either new or cached)
 
@@ -333,7 +333,7 @@ def map_coordinates(df, city_col):
     
     df[f'{city_col}_coordinates'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('coordinates', ""))
     df[f'{city_col}_country'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('country', ""))
-    df[f'{city_col}_id'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('city_id', ""))
+    df[f'{city_col}_city_id'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('city_id', ""))
     return df
 
 
@@ -431,8 +431,8 @@ for author, row in author_data.iterrows():
             # Add the cached data to the authors dataframe
             author_data.at[author, f'{city_col}_coordinates'] = cached_data['coordinates']
             author_data.at[author, f'{city_col}_country'] = cached_data['country']
-            author_data.at[author, f'{city_col}_id'] = cached_data['city_id']
-            # author_data.at[author, f'{city_col}_id'] = cached_data.get('city_id', None)
+            author_data.at[author, f'{city_col}_city_id'] = cached_data['city_id']
+            # author_data.at[author, f'{city_col}_city_id'] = cached_data.get('city_id', None)
             set_flag(city_col, author, cached_data['country'], row)
             
 
