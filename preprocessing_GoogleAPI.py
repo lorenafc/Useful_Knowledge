@@ -52,7 +52,7 @@ def save_cache():
     
 #cities_dict = {}  
 
-dict_file =  './spreadsheets_authors/results/tests/cities_dict.json'
+dict_file =  './path/to/your/cities_dict.json'
   
 # Initialize or load the cities dictionary
 def load_or_initialize_cities_dict(filename='cities_dict.json'):
