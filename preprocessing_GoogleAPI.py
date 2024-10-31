@@ -386,7 +386,7 @@ def geocode_city(city_name, year):
                          
                          
                          # Check if city_name is already in cities_dict before adding
-                         if f"{other_location[1]}, {other_location[2]" not in cities_dict:
+                         if f"{other_location[1]}, {other_location[2]}" not in cities_dict:
                              # Add the city to the dictionary
                              
                              cities_dict[city_name] = {
