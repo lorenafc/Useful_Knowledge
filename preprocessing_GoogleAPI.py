@@ -20,18 +20,16 @@ gmaps = googlemaps.Client(key=API_KEY)
 file_path = 'path/to/your/input_file.csv' 
 author_data = pd.read_excel(file_path)
 
+cache_file = 'path/to/your/geocode_cache.csv'
+dict_file =  './path/to/your/cities_dict.json'
 
 # Check for existing geocoded cache file
-cache_file = 'path/to/your/geocode_cache.csv'
-
-
-
 if os.path.exists(cache_file):
     geocode_cache = pd.read_csv(cache_file).set_index('city').to_dict(orient='index')
 else:
     geocode_cache = {}
     
-    
+   
 # Function to save cache incrementally
 def save_cache():
     """
@@ -49,12 +47,6 @@ def save_cache():
     cache_df.columns = ['city', 'coordinates', 'country', 'city_id']
     cache_df.to_csv(cache_file, index=False, encoding='utf-8')
     
-    
-#cities_dict = {}  
-
-dict_file =  './path/to/your/cities_dict.json'
-
-
   
 # Initialize or load the cities dictionary
 def load_or_initialize_cities_dict(filename=dict_file):
@@ -63,9 +55,6 @@ def load_or_initialize_cities_dict(filename=dict_file):
             return json.load(f)
     else:
         return {}  # Start with an empty dictionary if file does not exist
-
-cities_dict = load_or_initialize_cities_dict()
-
 
 # Function to save the cities dictionary incrementally
 def save_cities_dict_to_json(cities_dict, filename=dict_file) -> None:
@@ -81,7 +70,9 @@ def save_cities_dict_to_json(cities_dict, filename=dict_file) -> None:
         json.dump(cities_dict, f)
     print(f"Added {city_name} to {filename}")
     print(f"The file has been saved to: {os.path.abspath(filename)}")
- 
+
+
+cities_dict = load_or_initialize_cities_dict()    
 
 americas_or_oceania_countries = [
     'US', 'CA', 'MX', 'GT', 'BZ', 'SV', 'HN', 'NI', 'CR', 'PA',  # North America & Central America
@@ -89,7 +80,6 @@ americas_or_oceania_countries = [
     'CU', 'HT', 'DO', 'JM', 'BS', 'TT', 'BB', 'AG', 'DM', 'GD', 'LC', 'VC', 'KN',  # Caribbean
     'AU', 'NZ', 'FJ', 'PG', 'SB', 'VU', 'WS', 'TO', 'KI', 'TV', 'NR', 'PW', 'FM', 'MH'  # Oceania
 ]
-
 
 # List of country codes for Europe
 european_countries = [
@@ -109,7 +99,6 @@ year_discovery = {
     'AU': 1606, 'FM': 1529, 'FJ': 1643, 'KI': 1528, 'MH': 1529, 'NR': 1798, 'NZ': 1642, 'PW': 1543, 'PG': 1526, 'SB': 1568, 'TO': 1616, 'TV': 1568, 'VU': 1606, 'WS': 1722  # (Australia, Micronesia, Fiji, Kiribati, Marshall Islands, Nauru, New Zealand, Palau, Papua New Guinea, Solomon Islands, Tonga, Tuvalu, Vanuatu, Samoa)
 }
 
-
 # Add necessary columns
 author_data['year_map'] = ""
 author_data['borncity_coordinates'] = ""
@@ -125,12 +114,10 @@ author_data['borncity_city_id'] = ""
 author_data['deathcity_city_id'] = ""
 author_data['activecity_city_id'] = ""
 
-
 # UTF-8 encoding for city columns 
 author_data['borncity'] = author_data['borncity'].apply(lambda x: str(x).encode('utf-8').decode('utf-8') if isinstance(x, str) else x)
 author_data['deathcity'] = author_data['deathcity'].apply(lambda x: str(x).encode('utf-8').decode('utf-8') if isinstance(x, str) else x)
 author_data['activecity'] = author_data['activecity'].apply(lambda x: str(x).encode('utf-8').decode('utf-8') if isinstance(x, str) else x)
-
 
 # Define a function to save city data and assign city_id
 def save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country, unique_id):
@@ -156,7 +143,6 @@ def save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordi
     elif city_col == 'activecity':
         author_data.at[author, 'activecity_city_id'] = unique_id
     save_cache()
-
         
 # Define a function to set the flag based on the year of discovery
 def set_flag(city_col, author, country, row):
@@ -188,9 +174,6 @@ def set_flag(city_col, author, country, row):
         # If no year of discovery is available, set the flag as 'no'
         author_data.at[author, f'{city_col}_americas_or_oceania_before_discovery'] = "no"
         
-
-
-
 # Define a function to assign unique ID
 def assign_unique_id(city_col, author, coordinates, id_cache):
     """
@@ -216,11 +199,7 @@ def assign_unique_id(city_col, author, coordinates, id_cache):
         author_data.at[author, f'{city_col}_city_id'] = id_cache[coordinates]
 
     return unique_id  # Return the unique_id (either new or cached)
-
-
-
-
-          
+         
 # Modify the geocode_city function to return both coordinates and country
 def geocode_city(city_name, year):
      """
@@ -261,13 +240,11 @@ def geocode_city(city_name, year):
          print(f"(Geocoded) Saving city {city_name} to cache. It has only 1 geocoding result. Coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
          save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_code, unique_id)
          set_flag(city_col, author, country_code, row)
-         
-         
-         
+                          
         # Check if city_name is already in cities_dict before adding
          if city_name not in cities_dict:
-            # Add the city to the dictionary
-            
+             
+            # Add the city to the dictionary           
             cities_dict[city_name] = {
                 "coordinates": [coordinates],
                 "country": [country_code],
@@ -279,10 +256,7 @@ def geocode_city(city_name, year):
             print(f"Added {city_name} with ID {unique_id} to the dictionary.")
          else:
             print(f"{city_name} already exists in the dictionary. Skipping addition.")
-                 
        
-                
-         
          return city_name, location['lat'], location['lng'], country_code
      
      #If there are multiple results for the city name
@@ -320,8 +294,7 @@ def geocode_city(city_name, year):
                       "country": [country_code],
                       "city_id": [unique_id]
                   })
-                                 
-              
+                                               
               # Save the updated dictionary to the JSON file
                   save_cities_dict_to_json(cities_dict)
                   print(f"Added {city_name} with ID {unique_id} to the dictionary.")
@@ -387,7 +360,6 @@ def geocode_city(city_name, year):
                                                   
                          return america_oceania_location
 
-
 # Define a function to map coordinates, country, and city_id to the author_data
 def map_coordinates(df, city_col):
     """
@@ -408,8 +380,6 @@ def map_coordinates(df, city_col):
     df[f'{city_col}_city_id'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('city_id', ""))
     return df
 
-
-
 # Process rows for year_map. For each row, if the death year is not empty, add it to the "year_map" column, if it is empty, add the "birth_year"+ 60
 for author, row in author_data.iterrows():
     if pd.notna(row['deathyear']):
@@ -421,7 +391,6 @@ author_data['year_map'] = pd.to_numeric(author_data['year_map'], errors='coerce'
 # Initialize a counter for unique IDs
 unique_id = 1
 id_cache = {}
-
 
 # In each row, go through each city in each column (born, death and active). If empty return None
 for author, row in author_data.iterrows():
@@ -440,33 +409,27 @@ for author, row in author_data.iterrows():
                                    
             #geocode using GooGle Maps API
             print(f"Geocoding city: {city_name}")  # Add a print statement to see the cities being geocoded
-            
-            
+                        
                         # Call geocode_city and check if it returns None
             result = geocode_city(city_name, row['year_map'])
             
             if result is not None:
                 # Unpack result if it’s not None
                 city_name, lat, lng, country_code = result
-                # Additional code to process and save the city information
+               
             else:
                 print(f"Geocoding failed for {city_name}. No data was returned.")
-                        
-            
-            #city_name, lat, lng, country_code = geocode_city(city_name, row['year_map'])  # Call geocode_city        
-                    
+                                           
        # If there is a city with the same name in the cache:
         else:
             
             # Retrieve all cached results for cities with the same name
             cached_results = geocode_cache[cache_key]
             
-
             # Check if cached_results is a single dictionary or a list
             if isinstance(cached_results, dict):
                 cached_results = [cached_results]  # Convert to list if it's a single dictionary
-   
-                     
+                       
             europe_location = None
             america_oceania_location = None
             other_location = None
@@ -520,8 +483,6 @@ for author, row in author_data.iterrows():
             # author_data.at[author, f'{city_col}_city_id'] = cached_data.get('city_id', None)
             set_flag(city_col, author, cached_data['country'], row)
             
-
-            
 # Apply mapping to all city columns (borncity, deathcity, activecity)
 city_columns = ['borncity', 'deathcity', 'activecity']
 for city_col in city_columns:
@@ -535,8 +496,6 @@ cols = ['borncity_city_id', 'borncity_coordinates', 'borncity_country',  'bornci
 # Reorder DataFrame columns
 author_data = author_data[['indexauthor', 'starturl', 'birthyear', 'deathyear',"year_map", 'nameandbirthdeathyear', 
                                'georeferenceurl', 'borncity'] + cols]
-
-
 
 # Save the DataFrame with the geocoded results
 output_file_csv = 'path/to/your/output_file.csv'  # Save CSV
