@@ -53,6 +53,8 @@ def save_cache():
 #cities_dict = {}  
 
 dict_file =  './path/to/your/cities_dict.json'
+
+
   
 # Initialize or load the cities dictionary
 def load_or_initialize_cities_dict(filename=dict_file):
@@ -303,19 +305,26 @@ def geocode_city(city_name, year):
      
                # Assign a unique ID for each result
               unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
-              
-              
-              
          
               # Store each result in the cache with a unique city_id
               print(f"Saving city {city_name} with more than 1 result to cache with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
               save_city_data_and_assign_city_id_column(city_col, author, unique_cache_key, coordinates, country_code, unique_id)
+              
+              # Add each location to the list under the city_name key in cities_dict
+              if coordinates not in cities_dict:   
+                  
+                  cities_dict[city_name].append({
+                      "coordinates": coordinates,
+                      "country": country_code,
+                      "city_id": unique_id
+                  })
+              
+              # Save the updated dictionary to the JSON file
+                  save_cities_dict_to_json(cities_dict)
+                  print(f"Added {city_name} with ID {unique_id} to the dictionary.")
+              else:
+                    print(f"{city_name} already exists in the dictionary. Skipping addition.")
       
-         
-          # for result in geocode_result:
-          #     location = result['geometry']['location']
-          #     country_code = result["address_components"][-1]["short_name"]
-          #     coordinates = f"{location['lat'], location['lng']}"
              
              #Check if the country is in Europe
               if country_code in european_countries:
@@ -339,29 +348,7 @@ def geocode_city(city_name, year):
                      save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{europe_location[1]}, {europe_location[2]}", europe_location[3], unique_id)
                      set_flag(city_col, author, europe_location[3], row)
                      
-                     
-                     # Check if city_name is already in cities_dict before adding
-                     if f"{europe_location[1]}, {europe_location[2]}" not in cities_dict:
-                         # Add the city to the dictionary
-                         
-                         cities_dict[city_name] = {
-                             "coordinates": [f"{europe_location[1]}, {europe_location[2]}"],
-                             "country": [europe_location[3]],
-                             "city_id": [unique_id]
-                         }
-                     
-                         # Save the updated dictionary to the JSON file
-                         save_cities_dict_to_json(cities_dict)
-                         print(f"Added {city_name} with ID {unique_id} to the dictionary.")
-                     else:
-                         print(f"{city_name} already exists in the dictionary. Skipping addition.")
-                              
-                     
-                     # # Add the city to the dictionary
-                     # cities_dict = {city_name:{"coordinates":[f"{europe_location[1]}, {europe_location[2]}"],"country": [europe_location[3]], "city_id": [unique_id]}} 
-
-                     # save_cities_dict_to_json()
-                     
+                                        
                      return europe_location
                  
                  else:
@@ -383,32 +370,8 @@ def geocode_city(city_name, year):
                          unique_id = assign_unique_id(city_col, author, f"{other_location[1]}, {other_location[2]}", id_cache)
                          print(f" (Geocoded) Saving city {city_name} to cache.  It has more than 1 result for this name. Geocoded outside Europe and Americas/Oceania with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
                          save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{other_location[1]}, {other_location[2]}", other_location[3], unique_id)
-                         set_flag(city_col, author, other_location[3], row)
-                         
-                         
-                         # Check if city_name is already in cities_dict before adding
-                         if f"{other_location[1]}, {other_location[2]}" not in cities_dict:
-                             # Add the city to the dictionary
-                             
-                             cities_dict[city_name] = {
-                                 "coordinates": [f"{other_location[1]}, {other_location[2]}"],
-                                 "country": [other_location[3]],
-                                 "city_id": [unique_id]
-                             }
-                         
-                             # Save the updated dictionary to the JSON file
-                             save_cities_dict_to_json(cities_dict)
-                             print(f"Added {city_name} with ID {unique_id} to the dictionary.")
-                         else:
-                             print(f"{city_name} already exists in the dictionary. Skipping addition.")
-                                  
-                         
-                         # # Add the city to the dictionary
-                         # cities_dict = {city_name:{"coordinates":[f"{other_location[1]}, {other_location[2]}"],"country": [other_location[3]], "city_id": [unique_id]}} 
-
-                         # save_cities_dict_to_json()
-                         
-                         
+                         set_flag(city_col, author, other_location[3], row)                       
+                                                  
                          return other_location
                              
                      # If no other location is found, use Americas/Oceania location
@@ -418,28 +381,7 @@ def geocode_city(city_name, year):
                          print(f" (Geocoded) Saving city {city_name} with more than 1 result in Americas/Oceania (no option in Europe or other location) to cache with coordinates: {coordinates}, country: {country_code}, city_id: {unique_id}")
                          save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{america_oceania_location[1]}, {america_oceania_location[2]}", america_oceania_location[3], unique_id)
                          set_flag(city_col, author, america_oceania_location[3], row)
-                         
-                         # Check if city_name is already in cities_dict before adding
-                         if f"{america_oceania_location[1]}, {america_oceania_location[2]}" not in cities_dict:
-                             # Add the city to the dictionary
-                             
-                             cities_dict[city_name] = {
-                                 "coordinates": [f"{america_oceania_location[1]}, {america_oceania_location[2]}"],
-                                 "country": [america_oceania_location[3]],
-                                 "city_id": [unique_id]
-                             }
-                         
-                             # Save the updated dictionary to the JSON file
-                             save_cities_dict_to_json(cities_dict)
-                             print(f"Added {city_name} with ID {unique_id} to the dictionary.")
-                         else:
-                             print(f"{city_name} already exists in the dictionary. Skipping addition.")
-                                  
-                         # # Add the city to the dictionary
-                         # cities_dict = {city_name:{"coordinates":[f"{america_oceania_location[1]}, {america_oceania_location[2]}"],"country": [america_oceania_location[3]], "city_id": [unique_id]}} 
-
-                         # save_cities_dict_to_json()
-                         
+                                                  
                          return america_oceania_location
 
 
