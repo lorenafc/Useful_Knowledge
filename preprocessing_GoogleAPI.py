@@ -265,7 +265,7 @@ def geocode_city(city_name, year):
          
          
         # Check if city_name is already in cities_dict before adding
-         if coordinates not in cities_dict:
+         if city_name not in cities_dict:
             # Add the city to the dictionary
             
             cities_dict[city_name] = {
@@ -290,7 +290,8 @@ def geocode_city(city_name, year):
          europe_location = None
          americas_oceania_location = None
          
-         cities_dict[city_name]=[]
+         if city_name not in cities_dict:
+             cities_dict[city_name] = []
            
         #Loop through the results to check country codes     
          for i, result in enumerate(geocode_result):
@@ -319,9 +320,7 @@ def geocode_city(city_name, year):
                       "country": [country_code],
                       "city_id": [unique_id]
                   })
-                  
-
-                  
+                                 
               
               # Save the updated dictionary to the JSON file
                   save_cities_dict_to_json(cities_dict)
