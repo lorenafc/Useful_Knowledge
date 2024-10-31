@@ -289,9 +289,10 @@ def geocode_city(city_name, year):
      elif len(geocode_result) > 1:
          europe_location = None
          americas_oceania_location = None
+         
+         cities_dict[city_name]=[]
            
-        #Loop through the results to check country codes
-     
+        #Loop through the results to check country codes     
          for i, result in enumerate(geocode_result):
               location = result['geometry']['location']
               country_code = result["address_components"][-1]["short_name"]
@@ -314,10 +315,13 @@ def geocode_city(city_name, year):
               if coordinates not in cities_dict:   
                   
                   cities_dict[city_name].append({
-                      "coordinates": coordinates,
-                      "country": country_code,
-                      "city_id": unique_id
+                      "coordinates": [coordinates],
+                      "country": [country_code],
+                      "city_id": [unique_id]
                   })
+                  
+
+                  
               
               # Save the updated dictionary to the JSON file
                   save_cities_dict_to_json(cities_dict)
