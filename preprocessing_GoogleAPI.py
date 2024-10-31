@@ -55,7 +55,7 @@ def save_cache():
 dict_file =  './path/to/your/cities_dict.json'
   
 # Initialize or load the cities dictionary
-def load_or_initialize_cities_dict(filename='cities_dict.json'):
+def load_or_initialize_cities_dict(filename=dict_file):
     if os.path.exists(filename):
         with open(filename, 'r') as f:
             return json.load(f)
@@ -78,6 +78,7 @@ def save_cities_dict_to_json(cities_dict, filename=dict_file) -> None:
     with open(filename, 'w') as f:
         json.dump(cities_dict, f)
     print(f"Added {city_name} to {filename}")
+    print(f"The file has been saved to: {os.path.abspath(filename)}")
  
 
 americas_or_oceania_countries = [
