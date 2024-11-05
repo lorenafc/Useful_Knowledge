@@ -552,24 +552,94 @@ author_data.to_excel(output_file_excel, index=False)
 print("Geocoding completed and files saved.")
 
 
-# Remove from the df the authors who were wrongly geocoded:
+# Remove from the df the authors who were wrongly geocoded and makes one spreadsheet of the results wrongly geocoded and one without it:
     
-# Create a boolean mask to identify the rows to be excluded
-yes_flag = (
-    (author_data["borncity_americas_or_oceania_before_discovery"] == "yes") |
-    (author_data["deathcity_americas_or_oceania_before_discovery"] == "yes") |
-    (author_data["activecity_americas_or_oceania_before_discovery"] == "yes")
-)
+def filter_and_save_authors_without_discovery_flag(author_data, csv_path_without_flag, excel_path_without_flag, csv_path_with_flag, excel_path_with_flag):
+    """
+    Filters out rows with a 'yes' flag for locations in the Americas or Oceania before discovery 
+    and saves the result to both CSV and Excel formats.
 
-# Create the df excluding the rows flagged with with "yes" (authors geocoded in a country before the country was disvovered)
-authors_without_yes_flag = author_data.loc[~yes_flag]
+    Parameters:
+    - author_data (pd.DataFrame): The input DataFrame containing author data.
+    - csv_path_without_flag (str): File path for saving CSV output of authors without 'yes' flags.
+    - excel_path_without_flag (str): File path for saving Excel output of authors without 'yes' flags.
+    - csv_path_with_flag (str): File path for saving CSV output of authors with 'yes' flags.
+    - excel_path_with_flag (str): File path for saving Excel output of authors with 'yes' flags.
+    
+    Returns:
+    - tuple of pd.DataFrame: DataFrames excluding rows with 'yes' flags and only rows with 'yes' flags.
+    """
+    # Create a boolean mask to identify rows to be excluded
+    yes_flag = (
+        (author_data["borncity_americas_or_oceania_before_discovery"] == "yes") |
+        (author_data["deathcity_americas_or_oceania_before_discovery"] == "yes") |
+        (author_data["activecity_americas_or_oceania_before_discovery"] == "yes")
+    )
 
-# save the result to excel an csv file
-output_file_csv_without_yes_flag = 'path/to/your/authors_without_yes_flag.csv'
-authors_without_yes_flag.to_csv(output_file_csv_without_yes_flag, index=False)
+    # Filter the DataFrames for rows with and without the 'yes' flag
+    authors_without_yes_flag = author_data.loc[~yes_flag]
+    authors_yes_flag = author_data.loc[yes_flag]
 
-output_file_excel_without_yes_flag = 'path/to/your/authors_without_yes_flag.xlsx'
-authors_without_yes_flag.to_excel(output_file_excel_without_yes_flag, index=False)
+    # Save the filtered results to separate CSV and Excel files
+    authors_without_yes_flag.to_csv(csv_path_without_flag, index=False)
+    authors_without_yes_flag.to_excel(excel_path_without_flag, index=False)
+    
+    authors_yes_flag.to_csv(csv_path_with_flag, index=False)
+    authors_yes_flag.to_excel(excel_path_with_flag, index=False)
 
-# Print the number of remaining rows
-print(f"Number of rows in authors_without_yes_flag: {authors_without_yes_flag.shape[0]}")
+    # Print the number of remaining rows
+    print(f"Number of authors without 'yes' flag: {authors_without_yes_flag.shape[0]}")
+    print(f"Number of authors with 'yes' flag: {authors_yes_flag.shape[0]}")
+    
+    return authors_without_yes_flag, authors_yes_flag
+
+# Remove from the df the authors with locations wrongly geocoded or not geocoded:
+
+def filter_flag_and_not_geocoded_authors(author_data, csv_path_cleaned, excel_path_cleaned, csv_path_bad, excel_path_bad):
+    """
+    Filters out rows with a 'yes' flag for locations in the Americas or Oceania before discovery
+    and rows with cities that are not geocoded, then saves the results to both CSV and Excel formats.
+
+    Parameters:
+    - author_data (pd.DataFrame): The input DataFrame containing author data.
+    - csv_path_cleaned (str): File path for saving CSV output of cleaned data.
+    - excel_path_cleaned (str): File path for saving Excel output of cleaned data.
+    - csv_path_bad (str): File path for saving CSV output of bad results.
+    - excel_path_bad (str): File path for saving Excel output of bad results.
+    
+    Returns:
+    - tuple of pd.DataFrame: DataFrames with cleaned data and bad results.
+    """
+    # Create a boolean mask to identify rows with a 'yes' flag
+    yes_flag = (
+        (author_data["borncity_americas_or_oceania_before_discovery"] == "yes") |
+        (author_data["deathcity_americas_or_oceania_before_discovery"] == "yes") |
+        (author_data["activecity_americas_or_oceania_before_discovery"] == "yes")
+    )
+
+    # Create a boolean mask for rows with missing coordinates in born, death, or active cities
+    not_geocoded = (
+        ((author_data["borncity"].notna()) & (author_data["borncity_coordinates"].isna())) |
+        ((author_data["deathcity"].notna()) & (author_data["deathcity_coordinates"].isna())) |
+        ((author_data["activecity"].notna()) & (author_data["activecity_coordinates"].isna()))
+    )
+
+    # Combine both conditions to filter out rows flagged with 'yes' or missing coordinates
+    bad_results = yes_flag | not_geocoded
+
+    # DataFrames for cleaned data and bad results
+    authors_cleaned = author_data.loc[~bad_results]
+    authors_bad_results = author_data.loc[bad_results]
+
+    # Save the cleaned and bad results data to separate CSV and Excel files
+    authors_cleaned.to_csv(csv_path_cleaned, index=False)
+    authors_cleaned.to_excel(excel_path_cleaned, index=False)
+    
+    authors_bad_results.to_csv(csv_path_bad, index=False)
+    authors_bad_results.to_excel(excel_path_bad, index=False)
+
+    # Print the number of rows for each dataset
+    print(f"Number of rows in cleaned data: {authors_cleaned.shape[0]}")
+    print(f"Number of rows in bad results: {authors_bad_results.shape[0]}")
+    
+    return authors_cleaned, authors_bad_results
