@@ -387,6 +387,23 @@ def geocode_city(city_name, year):
                          set_flag(city_col, author, america_oceania_location[3], row)
                                                   
                          return america_oceania_location
+                     
+            # If the year is greater than or equal to the discovery year, use the first geocoded result
+             elif discovery_year and year >= discovery_year:
+               first_result = geocode_result[0]
+               location = first_result["geometry"]["location"]
+               country_name = None
+               for component in first_result['address_components']:
+                   if "country" in component['types']:
+                       country_name = component['long_name']
+                       break
+       
+               unique_id = assign_unique_id(city_col, author, f"{location['lat']}, {location['lng']}", id_cache)
+               print(f"(Geocoded) Using first geocoded result for {city_name} with multiple results as year >= discovery year. Coordinates: {location['lat']}, {location['lng']}, country: {country_name}, city_id: {unique_id}")
+               save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{location['lat']}, {location['lng']}", country_name, unique_id)
+               set_flag(city_col, author, country_name, row)
+       
+               return city_name, location["lat"], location["lng"], country_name   
 
 # Define a function to map coordinates, country, and city_id to the author_data
 def map_coordinates(df, city_col):
