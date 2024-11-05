@@ -7,9 +7,9 @@
 This part of the project involves the geocoding and visualization of authors from small cities, retrieved from the [Virtual International Authority File (VIAF)](https://viaf.org/) by [Eric Chaney](https://www.tse-fr.eu/sites/default/files/TSE/documents/sem2022/bid/chaney.pdf).
 
 - **Dataset**: The dataset used contains author names, authors index, their birth and death years, birth, death, and active cities, the VIAF URL and  a georeference URL.
-- The original dataset had encoding issues with some names. These encoding errors were mostly corrected using this script: 
-[preprocessing.ipynb](https://github.com/lorenafc/Capita_Selecta_RHI50403/blob/main/preprocessing.ipynb)
 
+- The original dataset had encoding issues with some names. Most of these encoding errors were corrected using the script in Google Colab: fix_city_names_encoding.ipynb. Eric Chaney assisted with correcting the remaining encoding issues.
+  
 - **Geocoding Scripts**:
   - The geocoding of the locations is performed using Google Maps API, and cities not successfully geocoded are handled with the OpenAI API. Remaining locations will be done manually.
 
