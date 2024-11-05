@@ -357,8 +357,12 @@ def geocode_city(city_name, year):
                      
                      for result in geocode_result:
                          location = result["geometry"]["location"]
-                         country_name = result["address_components"][-1]["short_name"]
-                         
+                         country_name = None
+                         for component in geocode_result[0]['address_components']:
+                            if "country" in component['types']:
+                                country_name = component['long_name']  # long_name for full country name
+                                break
+                                             
                          #Prioritize non-Americas/Oceania countries first
                          if country_name not in americas_or_oceania_countries and country_name not in european_countries:
                              other_location = (city_name, location["lat"], location["lng"], country_name)
