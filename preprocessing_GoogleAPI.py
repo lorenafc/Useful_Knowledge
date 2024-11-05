@@ -623,6 +623,7 @@ def filter_flag_and_not_geocoded_authors(author_data, csv_path_cleaned, excel_pa
         ((author_data["deathcity"].notna()) & (author_data["deathcity_coordinates"].isna())) |
         ((author_data["activecity"].notna()) & (author_data["activecity_coordinates"].isna()))
     )
+    
 
     # Combine both conditions to filter out rows flagged with 'yes' or missing coordinates
     bad_results = yes_flag | not_geocoded
