@@ -519,7 +519,6 @@ for author, row in author_data.iterrows():
                     # If the author died after the discovery year, use the first result
                     print(f" (Cache) Using first cached result for {city_name}. Author died in {row['year_map']}, after discovery year {discovery_year} of {country}. ")
                     cached_data = cached_results[0]
-
             
             # Add the cached data to the authors dataframe
             author_data.at[author, f'{city_col}_coordinates'] = cached_data['coordinates']
@@ -601,14 +600,14 @@ def filter_flag_and_not_geocoded_authors(author_data, csv_path_cleaned, excel_pa
     and rows with cities that are not geocoded, then saves the results to both CSV and Excel formats.
 
     Parameters:
-    - author_data (pd.DataFrame): The input DataFrame containing author data.
+    - author_data (pd.DataFrame): the dataframe with author data.
     - csv_path_cleaned (str): File path for saving CSV output of cleaned data.
     - excel_path_cleaned (str): File path for saving Excel output of cleaned data.
     - csv_path_bad (str): File path for saving CSV output of bad results.
     - excel_path_bad (str): File path for saving Excel output of bad results.
     
     Returns:
-    - tuple of pd.DataFrame: DataFrames with cleaned data and bad results.
+    - tuple of pd.dataframe: df with authors geocoded and authors flagged or not geocoded.
     """
     # Create a boolean mask to identify rows with a 'yes' flag
     yes_flag = (
@@ -617,30 +616,27 @@ def filter_flag_and_not_geocoded_authors(author_data, csv_path_cleaned, excel_pa
         (author_data["activecity_americas_or_oceania_before_discovery"] == "yes")
     )
 
-    # Create a boolean mask for rows with missing coordinates in born, death, or active cities
+    # Create a boolean mask for rows not geocoded in born, death, or active cities ( with missing coordinates)
     not_geocoded = (
         ((author_data["borncity"].notna()) & (author_data["borncity_coordinates"].isna())) |
         ((author_data["deathcity"].notna()) & (author_data["deathcity_coordinates"].isna())) |
         ((author_data["activecity"].notna()) & (author_data["activecity_coordinates"].isna()))
     )
     
-
-    # Combine both conditions to filter out rows flagged with 'yes' or missing coordinates
+    # Combine both conditions
     bad_results = yes_flag | not_geocoded
 
-    # DataFrames for cleaned data and bad results
+    # separate authors geocoded from the ones wrongly geocoded (flag "yes") or not geocoded (with missing coordinates)
     authors_cleaned = author_data.loc[~bad_results]
     authors_bad_results = author_data.loc[bad_results]
 
-    # Save the cleaned and bad results data to separate CSV and Excel files
     authors_cleaned.to_csv(csv_path_cleaned, index=False)
     authors_cleaned.to_excel(excel_path_cleaned, index=False)
     
     authors_bad_results.to_csv(csv_path_bad, index=False)
     authors_bad_results.to_excel(excel_path_bad, index=False)
 
-    # Print the number of rows for each dataset
-    print(f"Number of rows in cleaned data: {authors_cleaned.shape[0]}")
-    print(f"Number of rows in bad results: {authors_bad_results.shape[0]}")
+    print(f"Number of authors geocoded: {authors_cleaned.shape[0]}")
+    print(f"Number of authors in flagged or not geocoded: {authors_bad_results.shape[0]}")
     
     return authors_cleaned, authors_bad_results
