@@ -444,7 +444,7 @@ for author, row in author_data.iterrows():
 author_data['year_map'] = pd.to_numeric(author_data['year_map'], errors='coerce')
 
 # Initialize a counter for unique IDs
-unique_id = 1
+unique_id = 0
 id_cache = {}
 
 geocode_limit = 20  
