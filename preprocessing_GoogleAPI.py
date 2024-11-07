@@ -23,31 +23,44 @@ author_data = pd.read_excel(file_path)
 cache_file = 'path/to/your/geocode_cache.csv'
 dict_file =  './path/to/your/cities_dict.json'
 
+output_file_csv = 'path/to/your/output_file.csv'  # Save CSV
+output_file_excel = 'path/to/your/output_file.xlsx'  # Save Excel
+
 # Check for existing geocoded cache file
 if os.path.exists(cache_file):
     geocode_cache = pd.read_csv(cache_file).set_index('city').to_dict(orient='index')
 else:
     geocode_cache = {}
-    
-   
-# Function to save cache incrementally
-def save_cache():
+      
+  
+def save_cache(): #source - Lucas Koren
     """
     Saves the current geocode cache to a CSV file incrementally.
-    Converts the cache dictionary to a DataFrame and writes it to a CSV file.
-
-    Args:
-        None
-    
-    Returns:
-        None
+    Only appends new entries to the file to avoid complete overwriting.
     """
+    # Convert the cache to a DataFrame
     cache_df = pd.DataFrame.from_dict(geocode_cache, orient='index')
     cache_df.reset_index(inplace=True)
     cache_df.columns = ['city', 'coordinates', 'country', 'city_id']
-    cache_df.to_csv(cache_file, index=False, encoding='utf-8')
     
-  
+    # Check if the cache file exists
+    if os.path.exists(cache_file):
+        # Load existing data
+        existing_df = pd.read_csv(cache_file)
+        
+        # Find new entries that are not already in the file
+        merged_df = pd.merge(cache_df, existing_df, on='city', how='left', indicator=True)
+        new_entries = merged_df[merged_df['_merge'] == 'left_only'].drop(columns=['_merge'])
+        
+        # Append only new entries to the file
+        if not new_entries.empty:
+            new_entries.to_csv(cache_file, mode='a', index=False, header=False, encoding='utf-8')
+    else:
+        # If the file does not exist, write the entire DataFrame as the initial cache
+        cache_df.to_csv(cache_file, index=False, encoding='utf-8')
+        
+        
+
 # Initialize or load the cities dictionary
 def load_or_initialize_cities_dict(filename=dict_file):
     if os.path.exists(filename):
@@ -226,7 +239,7 @@ def geocode_city(city_name, year):
      Returns:
          tuple: The city name, latitude, longitude, and country code.
      """
-     time.sleep(1)  # To avoid hitting API limits
+     time.sleep(0.03)  # To avoid hitting API limits
      
      geocode_result = gmaps.geocode(city_name)
      
@@ -541,9 +554,6 @@ cols = ['borncity_city_id','borncity', 'borncity_country', 'borncity_coordinates
 author_data = author_data[['indexauthor', 'starturl', 'birthyear', 'deathyear',"year_map", 'nameandbirthdeathyear', 
                                'georeferenceurl'] + cols]
 
-# Save the DataFrame with the geocoded results
-output_file_csv = 'path/to/your/output_file.csv'  # Save CSV
-output_file_excel = 'path/to/your/output_file.xlsx'  # Save Excel
 
 author_data.to_csv(output_file_csv, index=False)
 author_data.to_excel(output_file_excel, index=False)
