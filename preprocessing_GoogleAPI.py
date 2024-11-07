@@ -32,7 +32,6 @@ if os.path.exists(cache_file):
 else:
     geocode_cache = {}
       
-  
 def save_cache(): #source - Lucas Koren
     """
     Saves the current geocode cache to a CSV file incrementally.
@@ -42,25 +41,24 @@ def save_cache(): #source - Lucas Koren
     cache_df = pd.DataFrame.from_dict(geocode_cache, orient='index')
     cache_df.reset_index(inplace=True)
     cache_df.columns = ['city', 'coordinates', 'country', 'city_id']
-    
+
     # Check if the cache file exists
     if os.path.exists(cache_file):
         # Load existing data
         existing_df = pd.read_csv(cache_file)
-        
-        # Find new entries that are not already in the file
-        merged_df = pd.merge(cache_df, existing_df, on='city', how='left', indicator=True)
+        # existing_df = pd.read_csv(cache_file, on_bad_lines='skip')
+
+        # Find new entries that are not already in the file (based on all columns)
+        merged_df = pd.merge(cache_df,existing_df, on=['city', 'coordinates', 'country', 'city_id'],how='left', indicator=True)
         new_entries = merged_df[merged_df['_merge'] == 'left_only'].drop(columns=['_merge'])
-        
+
         # Append only new entries to the file
         if not new_entries.empty:
             new_entries.to_csv(cache_file, mode='a', index=False, header=False, encoding='utf-8')
     else:
         # If the file does not exist, write the entire DataFrame as the initial cache
         cache_df.to_csv(cache_file, index=False, encoding='utf-8')
-        
-        
-
+      
 # Initialize or load the cities dictionary
 def load_or_initialize_cities_dict(filename=dict_file):
     if os.path.exists(filename):
@@ -68,7 +66,6 @@ def load_or_initialize_cities_dict(filename=dict_file):
             return json.load(f)
     else:
         return {}  # Start with an empty dictionary if file does not exist
-
 
 cities_dict = load_or_initialize_cities_dict()
 
@@ -450,8 +447,18 @@ author_data['year_map'] = pd.to_numeric(author_data['year_map'], errors='coerce'
 unique_id = 1
 id_cache = {}
 
+geocode_limit = 20  
+geocode_count = 0
+geocode_limit_reached = False
+
 # In each row, go through each city in each column (born, death and active). If empty return None
 for author, row in author_data.iterrows():
+          
+       ######## GEOCODE LIMIT TO TEST THE CODE #####
+
+    if geocode_limit_reached: 
+        break  # Exit the outer loop if the limit is reached
+    
     for city_col in ['borncity', 'deathcity', 'activecity']:
         city_name = row[city_col]
         
@@ -459,6 +466,16 @@ for author, row in author_data.iterrows():
         if not city_name or pd.isna(city_name):
             continue
         
+        # Check if the geocode limit was reached
+        if geocode_count >= geocode_limit:
+            print(f"Geocode limit of {geocode_limit} reached. Stopping geocoding.")
+            geocode_limit_reached = True  
+            break
+        
+        geocode_count += 1
+        
+        ######## ENG GEOCODE LIMIT ######## 
+                
         # Create a composite key for the cache using city_name
         cache_key = city_name
         
@@ -563,7 +580,7 @@ print("Geocoding completed and files saved.")
 
 # Remove from the df the authors who were wrongly geocoded and makes one spreadsheet of the results wrongly geocoded and one without it:
     
-def filter_and_save_authors_without_discovery_flag(author_data, csv_path_without_flag, excel_path_without_flag, csv_path_with_flag, excel_path_with_flag):
+def filter_authors_without_yes_flag(author_data, csv_path_without_flag, excel_path_without_flag, csv_path_with_flag, excel_path_with_flag):
     """
     Filters out rows with a 'yes' flag for locations in the Americas or Oceania before discovery 
     and saves the result to both CSV and Excel formats.
@@ -604,7 +621,7 @@ def filter_and_save_authors_without_discovery_flag(author_data, csv_path_without
 
 # Remove from the df the authors with locations wrongly geocoded or not geocoded:
 
-def filter_flag_and_not_geocoded_authors(author_data, csv_path_cleaned, excel_path_cleaned, csv_path_bad, excel_path_bad):
+def filter_authors_with_flag_or_not_geocoded(author_data, csv_path_cleaned, excel_path_cleaned, csv_path_bad, excel_path_bad):
     """
     Filters out rows with a 'yes' flag for locations in the Americas or Oceania before discovery
     and rows with cities that are not geocoded, then saves the results to both CSV and Excel formats.
