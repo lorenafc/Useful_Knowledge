@@ -109,7 +109,6 @@ americas_or_oceania_countries = [
     'Tonga', 'Tuvalu', 'Vanuatu'
 ]
 
-# Europe countries
 european_countries = [
     'Albania', 'Andorra', 'Austria', 'Belarus', 'Belgium', 'Bosnia and Herzegovina', 'Bulgaria', 'Croatia', 'Cyprus', 
     'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland', 'Ireland', 
@@ -117,26 +116,6 @@ european_countries = [
     'Netherlands', 'North Macedonia', 'Norway', 'Poland', 'Portugal', 'Romania', 'Russia', 'San Marino', 'Serbia', 
     'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Switzerland', 'Ukraine', 'United Kingdom'
 ]
-
-year_discovery = {
-    # North America & Central America
-    'Belize': 1502, 'Canada': 1497, 'Costa Rica': 1502, 'Guatemala': 1523, 'Honduras': 1502, 'Mexico': 1519, 
-    'Nicaragua': 1524, 'Panama': 1501, 'El Salvador': 1524, 'United States': 1492,  
-    
-    # South America
-    'Argentina': 1516, 'Bolivia': 1535, 'Brazil': 1500, 'Chile': 1520, 'Colombia': 1499, 'Ecuador': 1531, 
-    'Guyana': 1498, 'Peru': 1526, 'Paraguay': 1537, 'Suriname': 1593, 'Uruguay': 1516, 'Venezuela': 1498,  
-    
-    # Caribbean
-    'Antigua and Barbuda': 1493, 'Barbados': 1492, 'Bahamas': 1492, 'Cuba': 1492, 'Dominica': 1493, 
-    'Dominican Republic': 1492, 'Grenada': 1498, 'Haiti': 1492, 'Jamaica': 1494, 'Saint Kitts and Nevis': 1493, 
-    'Saint Lucia': 1502, 'Trinidad and Tobago': 1498, 'Saint Vincent and the Grenadines': 1498,  
-    
-    # Oceania
-    'Australia': 1606, 'Micronesia': 1529, 'Fiji': 1643, 'Kiribati': 1528, 'Marshall Islands': 1529, 
-    'Nauru': 1798, 'New Zealand': 1642, 'Palau': 1543, 'Papua New Guinea': 1526, 'Solomon Islands': 1568, 
-    'Tonga': 1616, 'Tuvalu': 1568, 'Vanuatu': 1606, 'Samoa': 1722
-}
 
 year_discovery = {
     # North America & Central America
