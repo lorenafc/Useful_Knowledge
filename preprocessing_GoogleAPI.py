@@ -18,7 +18,8 @@ gmaps = googlemaps.Client(key=API_KEY)
 
 #Load your data
 file_path = 'path/to/your/input_file.csv' 
-author_data = pd.read_excel(file_path)
+# author_data = pd.read_excel(file_path)
+author_data = pd.read_csv(file_path, dtype={2: str, 6: str}, low_memory=False)
 
 cache_file = 'path/to/your/geocode_cache.csv'
 dict_file =  './path/to/your/cities_dict.json'
@@ -28,7 +29,11 @@ output_file_excel = 'path/to/your/output_file.xlsx'  # Save Excel
 
 # Check for existing geocoded cache file
 if os.path.exists(cache_file):
-    geocode_cache = pd.read_csv(cache_file).set_index('city').to_dict(orient='index')
+    # geocode_cache = pd.read_csv(cache_file).set_index('city').to_dict(orient='index')
+    geocode_cache_df = pd.read_csv(cache_file)
+    # Drop duplicates based on a unique combination of columns
+    geocode_cache_df.drop_duplicates(subset=['city', 'coordinates', 'country', 'city_id'], inplace=True)
+    geocode_cache = geocode_cache_df.set_index('city').to_dict(orient='index')
 else:
     geocode_cache = {}
       
@@ -54,6 +59,7 @@ def save_cache(): #source - Lucas Koren
 
         # Append only new entries to the file
         if not new_entries.empty:
+            new_entries.drop_duplicates(subset=['city', 'coordinates', 'country', 'city_id'], inplace=True) ### being redundant to avoid repeated values
             new_entries.to_csv(cache_file, mode='a', index=False, header=False, encoding='utf-8')
     else:
         # If the file does not exist, write the entire DataFrame as the initial cache
@@ -255,182 +261,191 @@ def geocode_city(city_name, year):
      """
      time.sleep(0.03)  # To avoid hitting API limits
      
-     geocode_result = gmaps.geocode(city_name)
+     try: # to avoid HTTPError 400 - Bad request
      
-     # Check if there are no geocoding results
-     if len(geocode_result) == 0:
-        print(f"(Not geocoded) City {city_name} could not be geocoded. No coordinates were returned.")
-        #return city_name, None, None, None
-        return None
-     
-     # Initialize variables before condition checks
-     europe_location = None
-     america_oceania_location = None
-     
-     #If there is only one result for the city:
-     if len(geocode_result) == 1:
+         geocode_result = gmaps.geocode(city_name)
          
-         location = geocode_result[0]['geometry']['location']
-         country_name = None
-         for component in geocode_result[0]['address_components']:
-            if "country" in component['types']:
-                country_name = component['long_name']  # long_name for full country name
-                break
-         coordinates = f"{location['lat']}, {location['lng']}"
+         # Check if there are no geocoding results
+         if len(geocode_result) == 0:
+            print(f"(Not geocoded) City {city_name} could not be geocoded. No coordinates were returned.")
+            #return city_name, None, None, None
+            return None
          
-         coordinates = f"{location['lat']}, {location['lng']}"
-         
-         # Generate a unique city_id based on coordinates and assign it
-         unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
-         
-         # Save the city and set the flag based on the discovery year
-         print(f"(Geocoded) Saving city {city_name} to cache. It has only 1 geocoding result. Coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-         save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_name, unique_id)
-         set_flag(city_col, author, country_name, row)
-                          
-        # Check if city_name is already in cities_dict before adding
-         if city_name not in cities_dict:
-             
-            # Add the city to the dictionary           
-            cities_dict[city_name] = {
-                "coordinates": [coordinates],
-                "country": [country_name],
-                "city_id": [unique_id]
-            }
-        
-            # Save the updated dictionary to the JSON file
-            save_cities_dict_to_json(cities_dict)
-            print(f"Added {city_name} with ID {unique_id} to the dictionary.")
-         else:
-            print(f"{city_name} already exists in the dictionary. Skipping addition.")
-       
-         return city_name, location['lat'], location['lng'], country_name
-     
-     #If there are multiple results for the city name
-     elif len(geocode_result) > 1:
+         # Initialize variables before condition checks
          europe_location = None
-         americas_oceania_location = None
+         america_oceania_location = None
          
-         if city_name not in cities_dict:
-             cities_dict[city_name] = []
+         #If there is only one result for the city:
+         if len(geocode_result) == 1:
+             
+             location = geocode_result[0]['geometry']['location']
+             country_name = None
+             for component in geocode_result[0]['address_components']:
+                if "country" in component['types']:
+                    country_name = component['long_name']  # long_name for full country name
+                    break
+             coordinates = f"{location['lat']}, {location['lng']}"
+             
+             coordinates = f"{location['lat']}, {location['lng']}"
+             
+             # Generate a unique city_id based on coordinates and assign it
+             unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
+             
+             # Save the city and set the flag based on the discovery year
+             print(f"(Geocoded) Saving city {city_name} to cache. It has only 1 geocoding result. Coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
+             save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_name, unique_id)
+             set_flag(city_col, author, country_name, row)
+                              
+            # Check if city_name is already in cities_dict before adding
+             if city_name not in cities_dict:
+                 
+                # Add the city to the dictionary           
+                cities_dict[city_name] = {
+                    "coordinates": [coordinates],
+                    "country": [country_name],
+                    "city_id": [unique_id]
+                }
+            
+                # Save the updated dictionary to the JSON file
+                save_cities_dict_to_json(cities_dict)
+                print(f"Added {city_name} with ID {unique_id} to the dictionary.")
+             else:
+                print(f"{city_name} already exists in the dictionary. Skipping addition.")
            
-        #Loop through the results to check country codes     
-         for i, result in enumerate(geocode_result):
-              location = result['geometry']['location']
-              country_name = None
-              for component in geocode_result[0]['address_components']:
-                 if "country" in component['types']:
-                     country_name = component['long_name']  # long_name for full country name
-                     break
-              coordinates = f"{location['lat']}, {location['lng']}"
-     
-               # Print debugging information
-              print(f"(Geocoded) Multiple geocoding results for {city_name}, result {i+1}: Coordinates: {coordinates}, Country: {country_name}")
+             return city_name, location['lat'], location['lng'], country_name
          
-               # Create a unique cache key for each location
-              unique_cache_key = f"{city_name}_{coordinates}"
-     
-               # Assign a unique ID for each result
-              unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
+         #If there are multiple results for the city name
+         elif len(geocode_result) > 1:
+             europe_location = None
+             americas_oceania_location = None
+             
+             if city_name not in cities_dict:
+                 cities_dict[city_name] = []
+               
+            #Loop through the results to check country codes     
+             for i, result in enumerate(geocode_result):
+                  location = result['geometry']['location']
+                  country_name = None
+                  for component in geocode_result[0]['address_components']:
+                     if "country" in component['types']:
+                         country_name = component['long_name']  # long_name for full country name
+                         break
+                  coordinates = f"{location['lat']}, {location['lng']}"
          
-              # Store each result in the cache with a unique city_id
-              print(f"Saving city {city_name} with more than 1 result to cache with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-              save_city_data_and_assign_city_id_column(city_col, author, unique_cache_key, coordinates, country_name, unique_id)
-              
-              # Add each location to the list under the city_name key in cities_dict
-              if coordinates not in cities_dict:   
+                   # Print debugging information
+                  print(f"(Geocoded) Multiple geocoding results for {city_name}, result {i+1}: Coordinates: {coordinates}, Country: {country_name}")
+             
+                   # Create a unique cache key for each location
+                  unique_cache_key = f"{city_name}_{coordinates}"
+         
+                   # Assign a unique ID for each result
+                  unique_id = assign_unique_id(city_col, author, coordinates, id_cache)
+             
+                  # Store each result in the cache with a unique city_id
+                  print(f"Saving city {city_name} with more than 1 result to cache with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
+                  save_city_data_and_assign_city_id_column(city_col, author, unique_cache_key, coordinates, country_name, unique_id)
                   
-                  cities_dict[city_name].append({
-                      "coordinates": [coordinates],
-                      "country": [country_name],
-                      "city_id": [unique_id]
-                  })
-                                               
-              # Save the updated dictionary to the JSON file
-                  save_cities_dict_to_json(cities_dict)
-                  print(f"Added {city_name} with ID {unique_id} to the dictionary.")
-              else:
-                    print(f"{city_name} already exists in the dictionary. Skipping addition.")
-      
-             
-             #Check if the country is in Europe
-              if country_name in european_countries:
-                  europe_location = (city_name, location["lat"], location["lng"], country_name)
+                  ###############################
+                  ##########
+                  set_flag(city_col, author, country_name, row)
+                  
+                  # Add each location to the list under the city_name key in cities_dict
+                  if coordinates not in cities_dict:   
+                      
+                      cities_dict[city_name].append({
+                          "coordinates": [coordinates],
+                          "country": [country_name],
+                          "city_id": [unique_id]
+                      })
+                                                   
+                  # Save the updated dictionary to the JSON file
+                      save_cities_dict_to_json(cities_dict)
+                      print(f"Added {city_name} with ID {unique_id} to the dictionary.")
+                  else:
+                        print(f"{city_name} already exists in the dictionary. Skipping addition.")
+          
                  
-              #Check if the country is in Americas or Oceania
-              if country_name in americas_or_oceania_countries:
-                  america_oceania_location = (city_name, location['lat'], location['lng'], country_name)
-         
-         # Check the discovery year for countries in the Americas or Oceania
-         if america_oceania_location:
-             country_name = america_oceania_location[3]
-             discovery_year = year_discovery.get(country_name, None)
+                 #Check if the country is in Europe
+                  if country_name in european_countries:
+                      europe_location = (city_name, location["lat"], location["lng"], country_name)
+                     
+                  #Check if the country is in Americas or Oceania
+                  if country_name in americas_or_oceania_countries:
+                      america_oceania_location = (city_name, location['lat'], location['lng'], country_name)
              
-             #If the author died before the discovery year, prioritize Europe
-             if discovery_year and year < discovery_year:
-                 if europe_location:
-                     
-                     unique_id = assign_unique_id(city_col, author, f"{europe_location[1]}, {europe_location[2]}", id_cache)
-                     print(f"(Geocoded) Saving city {city_name} to cache. It has more than 1 result for this name. Geocoded in Europe with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-                     save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{europe_location[1]}, {europe_location[2]}", europe_location[3], unique_id)
-                     set_flag(city_col, author, europe_location[3], row)
-                     
-                                        
-                     return europe_location
+             # Check the discovery year for countries in the Americas or Oceania
+             if america_oceania_location:
+                 country_name = america_oceania_location[3]
+                 discovery_year = year_discovery.get(country_name, None)
                  
-                 else:
-                     #If no European location, prioritize any other non-Americas/Oceania location
-                     other_location = None
+                 #If the author died before the discovery year, prioritize Europe
+                 if discovery_year and year < discovery_year:
+                     if europe_location:
+                         
+                         unique_id = assign_unique_id(city_col, author, f"{europe_location[1]}, {europe_location[2]}", id_cache)
+                         print(f"(Geocoded) Saving city {city_name} to cache. It has more than 1 result for this name. Geocoded in Europe with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
+                         save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{europe_location[1]}, {europe_location[2]}", europe_location[3], unique_id)
+                         set_flag(city_col, author, europe_location[3], row)
+                         
+                                            
+                         return europe_location
                      
-                     for result in geocode_result:
-                         location = result["geometry"]["location"]
-                         country_name = None
-                         for component in geocode_result[0]['address_components']:
-                            if "country" in component['types']:
-                                country_name = component['long_name']  # long_name for full country name
-                                break
-                                             
-                         #Prioritize non-Americas/Oceania countries first
-                         if country_name not in americas_or_oceania_countries and country_name not in european_countries:
-                             other_location = (city_name, location["lat"], location["lng"], country_name)
-                             break
+                     else:
+                         #If no European location, prioritize any other non-Americas/Oceania location
+                         other_location = None
                          
-                     # If there is another location outuside Americas/Oceania, use it 
-                     if other_location:
-                         
-                         unique_id = assign_unique_id(city_col, author, f"{other_location[1]}, {other_location[2]}", id_cache)
-                         print(f" (Geocoded) Saving city {city_name} to cache.  It has more than 1 result for this name. Geocoded outside Europe and Americas/Oceania with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-                         save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{other_location[1]}, {other_location[2]}", other_location[3], unique_id)
-                         set_flag(city_col, author, other_location[3], row)                       
-                                                  
-                         return other_location
+                         for result in geocode_result:
+                             location = result["geometry"]["location"]
+                             country_name = None
+                             for component in geocode_result[0]['address_components']:
+                                if "country" in component['types']:
+                                    country_name = component['long_name']  # long_name for full country name
+                                    break
+                                                 
+                             #Prioritize non-Americas/Oceania countries first
+                             if country_name not in americas_or_oceania_countries and country_name not in european_countries:
+                                 other_location = (city_name, location["lat"], location["lng"], country_name)
+                                 break
                              
-                     # If no other location is found, use Americas/Oceania location
-                     if america_oceania_location:
+                         # If there is another location outuside Americas/Oceania, use it 
+                         if other_location:
+                             
+                             unique_id = assign_unique_id(city_col, author, f"{other_location[1]}, {other_location[2]}", id_cache)
+                             print(f" (Geocoded) Saving city {city_name} to cache.  It has more than 1 result for this name. Geocoded outside Europe and Americas/Oceania with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
+                             save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{other_location[1]}, {other_location[2]}", other_location[3], unique_id)
+                             set_flag(city_col, author, other_location[3], row)                       
+                                                      
+                             return other_location
+                                 
+                         # If no other location is found, use Americas/Oceania location
+                         if america_oceania_location:
+                             
+                             unique_id = assign_unique_id(city_col, author, f"{america_oceania_location[1]}, {america_oceania_location[2]}", id_cache)
+                             print(f" (Geocoded) Saving city {city_name} with more than 1 result in Americas/Oceania (no option in Europe or other location) to cache with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
+                             save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{america_oceania_location[1]}, {america_oceania_location[2]}", america_oceania_location[3], unique_id)
+                             set_flag(city_col, author, america_oceania_location[3], row)
+                                                      
+                             return america_oceania_location
                          
-                         unique_id = assign_unique_id(city_col, author, f"{america_oceania_location[1]}, {america_oceania_location[2]}", id_cache)
-                         print(f" (Geocoded) Saving city {city_name} with more than 1 result in Americas/Oceania (no option in Europe or other location) to cache with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-                         save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{america_oceania_location[1]}, {america_oceania_location[2]}", america_oceania_location[3], unique_id)
-                         set_flag(city_col, author, america_oceania_location[3], row)
-                                                  
-                         return america_oceania_location
-                     
-            # If the year is greater than or equal to the discovery year, use the first geocoded result
-             elif discovery_year and year >= discovery_year:
-               first_result = geocode_result[0]
-               location = first_result["geometry"]["location"]
-               country_name = None
-               for component in first_result['address_components']:
-                   if "country" in component['types']:
-                       country_name = component['long_name']
-                       break
-       
-               unique_id = assign_unique_id(city_col, author, f"{location['lat']}, {location['lng']}", id_cache)
-               print(f"(Geocoded) Using first geocoded result for {city_name} with multiple results as year >= discovery year. Coordinates: {location['lat']}, {location['lng']}, country: {country_name}, city_id: {unique_id}")
-               save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{location['lat']}, {location['lng']}", country_name, unique_id)
-               set_flag(city_col, author, country_name, row)
-       
-               return city_name, location["lat"], location["lng"], country_name   
+                # If the year is greater than or equal to the discovery year, use the first geocoded result
+                 elif discovery_year and year >= discovery_year:
+                   first_result = geocode_result[0]
+                   location = first_result["geometry"]["location"]
+                   country_name = None
+                   for component in first_result['address_components']:
+                       if "country" in component['types']:
+                           country_name = component['long_name']
+                           break
+           
+                   unique_id = assign_unique_id(city_col, author, f"{location['lat']}, {location['lng']}", id_cache)
+                   print(f"(Geocoded) Using first geocoded result for {city_name} with multiple results as year >= discovery year. Coordinates: {location['lat']}, {location['lng']}, country: {country_name}, city_id: {unique_id}")
+                   save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{location['lat']}, {location['lng']}", country_name, unique_id)
+                   set_flag(city_col, author, country_name, row)
+           
+                   return city_name, location["lat"], location["lng"], country_name
+     except Exception as e:
+         print(f"Error geocoding {city_name}: {e}")
+         return None  # Skip to next city if an error occurs
 
 # Define a function to map coordinates, country, and city_id to the author_data
 def map_coordinates(df, city_col):
@@ -452,6 +467,9 @@ def map_coordinates(df, city_col):
     df[f'{city_col}_city_id'] = df[city_col].map(lambda city: geocode_cache.get(city, {}).get('city_id', ""))
     return df
 
+# Initialize a counter for unique IDs
+unique_id = 0
+
 # Process rows for year_map. For each row, if the death year is not empty, add it to the "year_map" column, if it is empty, add the "birth_year"+ 60
 for author, row in author_data.iterrows():
     if pd.notna(row['deathyear']):
@@ -460,21 +478,21 @@ for author, row in author_data.iterrows():
         author_data.at[author, "year_map"] = int(row['birthyear']) + 60
 author_data['year_map'] = pd.to_numeric(author_data['year_map'], errors='coerce')
 
-# Initialize a counter for unique IDs
-unique_id = 0
+
 id_cache = {}
 
-geocode_limit = 20  
-geocode_count = 0
-geocode_limit_reached = False
+       ######## GEOCODE LIMIT TO TEST THE CODE - uncoment to test it #####
+# geocode_limit = 20  
+# geocode_count = 0
+# geocode_limit_reached = False
 
 # In each row, go through each city in each column (born, death and active). If empty return None
 for author, row in author_data.iterrows():
           
-       ######## GEOCODE LIMIT TO TEST THE CODE #####
+       ######## GEOCODE LIMIT TO TEST THE CODE - uncoment to test it #####
 
-    if geocode_limit_reached: 
-        break  # Exit the outer loop if the limit is reached
+    # if geocode_limit_reached: 
+    #     break  # Exit the outer loop if the limit is reached
     
     for city_col in ['borncity', 'deathcity', 'activecity']:
         city_name = row[city_col]
@@ -483,15 +501,15 @@ for author, row in author_data.iterrows():
         if not city_name or pd.isna(city_name):
             continue
         
-        # Check if the geocode limit was reached
-        if geocode_count >= geocode_limit:
-            print(f"Geocode limit of {geocode_limit} reached. Stopping geocoding.")
-            geocode_limit_reached = True  
-            break
+        # # Check if the geocode limit was reached
+        # if geocode_count >= geocode_limit:
+        #     print(f"Geocode limit of {geocode_limit} reached. Stopping geocoding.")
+        #     geocode_limit_reached = True  
+        #     break
         
-        geocode_count += 1
+        # geocode_count += 1
         
-        ######## ENG GEOCODE LIMIT ######## 
+        ######## END GEOCODE LIMIT ######## 
                 
         # Create a composite key for the cache using city_name
         cache_key = city_name
