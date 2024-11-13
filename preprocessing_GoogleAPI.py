@@ -295,8 +295,7 @@ def geocode_city(city_name, year):
             # save_cache()  # Save the cache immediately after adding an unsuccessful attempt # ADDING THE CITIES NOT GEOCODED IN CACHE TOO
             return None
             #return city_name, None, None, None
-            return None
-         
+                    
          # Initialize variables before condition checks
          europe_location = None
          america_oceania_location = None
