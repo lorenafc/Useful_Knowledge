@@ -18,7 +18,7 @@ gmaps = googlemaps.Client(key=API_KEY)
 
 #Load your data
 file_path = 'path/to/your/input_file.csv' 
-# author_data = pd.read_excel(file_path)
+# author_data = pd.read_csv(file_path)
 author_data = pd.read_csv(file_path, dtype={2: str, 6: str}, low_memory=False)
 
 cache_file = 'path/to/your/geocode_cache.csv'
@@ -34,8 +34,14 @@ if os.path.exists(cache_file):
     # Drop duplicates based on a unique combination of columns
     geocode_cache_df.drop_duplicates(subset=['city', 'coordinates', 'country', 'city_id'], inplace=True)
     geocode_cache = geocode_cache_df.set_index('city').to_dict(orient='index')
+    
+    # Set the unique_id to the next available ID based on the maximum city_id in the cache
+    max_id_in_cache = geocode_cache_df['city_id'].max()
+    unique_id = max_id_in_cache
+    
 else:
     geocode_cache = {}
+    unique_id = 0 # moved here to stoped the counting reinitializing
       
 def save_cache(): #source - Lucas Koren
     """
@@ -166,6 +172,16 @@ author_data['borncity'] = author_data['borncity'].apply(lambda x: str(x).encode(
 author_data['deathcity'] = author_data['deathcity'].apply(lambda x: str(x).encode('utf-8').decode('utf-8') if isinstance(x, str) else x)
 author_data['activecity'] = author_data['activecity'].apply(lambda x: str(x).encode('utf-8').decode('utf-8') if isinstance(x, str) else x)
 
+# Reorder the columns, placing city_id before coordinates
+cols = ['borncity_city_id','borncity', 'borncity_country', 'borncity_coordinates',  'borncity_americas_or_oceania_before_discovery',  'deathcity_city_id', "deathcity", 
+       'deathcity_country', 'deathcity_coordinates', 'deathcity_americas_or_oceania_before_discovery', 'activecity_city_id', "activecity",
+        'activecity_country', 'activecity_coordinates', 'activecity_americas_or_oceania_before_discovery']
+
+# Reorder DataFrame columns
+author_data = author_data[['indexauthor', 'starturl', 'birthyear', 'deathyear',"year_map", 'nameandbirthdeathyear', 
+                               'georeferenceurl'] + cols]
+
+
 # Define a function to save city data and assign city_id
 def save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country, unique_id):
     """
@@ -191,7 +207,7 @@ def save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordi
         author_data.at[author, 'activecity_city_id'] = unique_id
     save_cache()
         
-# Define a function to set the flag based on the year of discovery
+
 def set_flag(city_col, author, country, row):
     """
     Sets the flag 'yes' or 'no' in the column {city_col}_americas_or_oceania_before_discovery
@@ -206,10 +222,15 @@ def set_flag(city_col, author, country, row):
     Returns:
         None
     """
-    is_in_americas_or_oceania = country in americas_or_oceania_countries if isinstance(country, str) else country.isin(americas_or_oceania_countries).any()
+    # Check if country is valid (not NaN)
+    if isinstance(country, str):
+        is_in_americas_or_oceania = country in americas_or_oceania_countries 
+    else:
+        is_in_americas_or_oceania = False  # Treat NaN or non-string as not in Americas or Oceania - to avoid AttributeError: 'float' object has no attribute 'isin'
+
     # Get the year of discovery from the dictionary
     year_discovery_value = year_discovery.get(country, None)
-    
+
     # Ensure the year discovery is available and compare with the year_map
     if year_discovery_value:
         before_year_discovery = row['year_map'] < year_discovery_value
@@ -220,6 +241,8 @@ def set_flag(city_col, author, country, row):
     else:
         # If no year of discovery is available, set the flag as 'no'
         author_data.at[author, f'{city_col}_americas_or_oceania_before_discovery'] = "no"
+
+
         
 # Define a function to assign unique ID
 def assign_unique_id(city_col, author, coordinates, id_cache):
@@ -268,6 +291,9 @@ def geocode_city(city_name, year):
          # Check if there are no geocoding results
          if len(geocode_result) == 0:
             print(f"(Not geocoded) City {city_name} could not be geocoded. No coordinates were returned.")
+            # geocode_cache[city_name] = {'coordinates': None, 'country': None, 'city_id': None} # ADDING THE CITIES NOT GEOCODED IN CACHE TOO
+            # save_cache()  # Save the cache immediately after adding an unsuccessful attempt # ADDING THE CITIES NOT GEOCODED IN CACHE TOO
+            return None
             #return city_name, None, None, None
             return None
          
@@ -468,7 +494,7 @@ def map_coordinates(df, city_col):
     return df
 
 # Initialize a counter for unique IDs
-unique_id = 0
+#unique_id = 0
 
 # Process rows for year_map. For each row, if the death year is not empty, add it to the "year_map" column, if it is empty, add the "birth_year"+ 60
 for author, row in author_data.iterrows():
@@ -596,16 +622,6 @@ for author, row in author_data.iterrows():
 city_columns = ['borncity', 'deathcity', 'activecity']
 for city_col in city_columns:
     author_data = map_coordinates(author_data, city_col)
-
-# Reorder the columns, placing city_id before coordinates
-cols = ['borncity_city_id','borncity', 'borncity_country', 'borncity_coordinates',  'borncity_americas_or_oceania_before_discovery',  'deathcity_city_id', "deathcity", 
-       'deathcity_country', 'deathcity_coordinates', 'deathcity_americas_or_oceania_before_discovery', 'activecity_city_id', "activecity",
-        'activecity_country', 'activecity_coordinates', 'activecity_americas_or_oceania_before_discovery']
-
-# Reorder DataFrame columns
-author_data = author_data[['indexauthor', 'starturl', 'birthyear', 'deathyear',"year_map", 'nameandbirthdeathyear', 
-                               'georeferenceurl'] + cols]
-
 
 author_data.to_csv(output_file_csv, index=False)
 author_data.to_excel(output_file_excel, index=False)
