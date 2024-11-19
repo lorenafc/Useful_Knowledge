@@ -38,7 +38,7 @@ def load_geocode_cache(cache_file: str):
 
     return geocode_cache, unique_id
 
-def save_cache() -> None: #source - Lucas Koren
+def save_cache(geocode_cache, cache_file: str) -> None: #source - Lucas Koren
     cache_df = pd.DataFrame.from_dict(geocode_cache, orient='index')
     cache_df.reset_index(inplace=True)
     cache_df.columns = ['city', 'coordinates', 'country', 'city_id']
@@ -73,7 +73,7 @@ def save_cities_dict_to_json(cities_dict: dict, filename=str) -> None:
     print(f"Added {city_name} to {filename}")
     print(f"The file has been saved to: {os.path.abspath(filename)}")
 
-def save_city_data_and_assign_city_id_column(city_col: str, author, cache_key, coordinates, country, unique_id: int) -> None:
+def save_city_data_and_assign_city_id_column(geocode_cache, city_col: str, author, cache_key, coordinates, country, unique_id: int) -> None:
     """
     Saves city data in the geocode cache, assigns city_id to respective columns, and updates the cache.
     
@@ -92,7 +92,7 @@ def save_city_data_and_assign_city_id_column(city_col: str, author, cache_key, c
         author_data.at[author, 'deathcity_city_id'] = unique_id
     elif city_col == 'activecity':
         author_data.at[author, 'activecity_city_id'] = unique_id
-    save_cache()
+    save_cache(geocode_cache, cache_file)
         
 def set_flag(city_col, author, country, row) -> None:
     """
@@ -153,7 +153,7 @@ def assign_unique_id(city_col, author, coordinates, id_cache) -> int:
 
     return unique_id  # Return the unique_id (either new or cached)
          
-def geocode_city(city_name, year):
+def geocode_city(city_name, year, gmaps: googlemaps.Client):
      """
      Geocodes a city using the Google Maps API.
      
@@ -188,7 +188,7 @@ def geocode_city(city_name, year):
             # save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_name, unique_id)
             # return city_name, None, None, None           
           
-            # return None
+            return None
          
          # Initialize variables before condition checks
          europe_location = None
@@ -211,7 +211,7 @@ def geocode_city(city_name, year):
              
              # Save the city and set the flag based on the discovery year
              print(f"(Geocoded) Saving city {city_name} to cache. It has only 1 geocoding result. Coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-             save_city_data_and_assign_city_id_column(city_col, author, cache_key, coordinates, country_name, unique_id)
+             save_city_data_and_assign_city_id_column(geocode_cache, city_col, author, cache_key, coordinates, country_name, unique_id)
              set_flag(city_col, author, country_name, row)
                               
             # Check if city_name is already in cities_dict before adding
@@ -261,7 +261,7 @@ def geocode_city(city_name, year):
              
                   # Store each result in the cache with a unique city_id
                   print(f"Saving city {city_name} with more than 1 result to cache with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-                  save_city_data_and_assign_city_id_column(city_col, author, unique_cache_key, coordinates, country_name, unique_id)
+                  save_city_data_and_assign_city_id_column(geocode_cache, city_col, author, unique_cache_key, coordinates, country_name, unique_id)
                   
                   ###############################
                   ##########
@@ -302,7 +302,7 @@ def geocode_city(city_name, year):
                          
                          unique_id = assign_unique_id(city_col, author, f"{europe_location[1]}, {europe_location[2]}", id_cache)
                          print(f"(Geocoded) Saving city {city_name} to cache. It has more than 1 result for this name. Geocoded in Europe with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-                         save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{europe_location[1]}, {europe_location[2]}", europe_location[3], unique_id)
+                         save_city_data_and_assign_city_id_column(geocode_cache, city_col, author, cache_key, f"{europe_location[1]}, {europe_location[2]}", europe_location[3], unique_id)
                          set_flag(city_col, author, europe_location[3], row)
                          
                                             
@@ -330,7 +330,7 @@ def geocode_city(city_name, year):
                              
                              unique_id = assign_unique_id(city_col, author, f"{other_location[1]}, {other_location[2]}", id_cache)
                              print(f" (Geocoded) Saving city {city_name} to cache.  It has more than 1 result for this name. Geocoded outside Europe and Americas/Oceania with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-                             save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{other_location[1]}, {other_location[2]}", other_location[3], unique_id)
+                             save_city_data_and_assign_city_id_column(geocode_cache, city_col, author, cache_key, f"{other_location[1]}, {other_location[2]}", other_location[3], unique_id)
                              set_flag(city_col, author, other_location[3], row)                       
                                                       
                              return other_location
@@ -340,7 +340,7 @@ def geocode_city(city_name, year):
                              
                              unique_id = assign_unique_id(city_col, author, f"{america_oceania_location[1]}, {america_oceania_location[2]}", id_cache)
                              print(f" (Geocoded) Saving city {city_name} with more than 1 result in Americas/Oceania (no option in Europe or other location) to cache with coordinates: {coordinates}, country: {country_name}, city_id: {unique_id}")
-                             save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{america_oceania_location[1]}, {america_oceania_location[2]}", america_oceania_location[3], unique_id)
+                             save_city_data_and_assign_city_id_column(geocode_cache, city_col, author, cache_key, f"{america_oceania_location[1]}, {america_oceania_location[2]}", america_oceania_location[3], unique_id)
                              set_flag(city_col, author, america_oceania_location[3], row)
                                                       
                              return america_oceania_location
@@ -357,7 +357,7 @@ def geocode_city(city_name, year):
            
                    unique_id = assign_unique_id(city_col, author, f"{location['lat']}, {location['lng']}", id_cache)
                    print(f"(Geocoded) Using first geocoded result for {city_name} with multiple results as year >= discovery year. Coordinates: {location['lat']}, {location['lng']}, country: {country_name}, city_id: {unique_id}")
-                   save_city_data_and_assign_city_id_column(city_col, author, cache_key, f"{location['lat']}, {location['lng']}", country_name, unique_id)
+                   save_city_data_and_assign_city_id_column(geocode_cache, city_col, author, cache_key, f"{location['lat']}, {location['lng']}", country_name, unique_id)
                    set_flag(city_col, author, country_name, row)
            
                    return city_name, location["lat"], location["lng"], country_name
@@ -368,7 +368,7 @@ def geocode_city(city_name, year):
 
 
 # Define a function to map coordinates, country, and city_id to the author_data
-def map_coordinates(df, city_col) -> pd.DataFrame:
+def map_coordinates(df, city_col, geocode_cache) -> pd.DataFrame:
     """
     Maps the geocoded coordinates, country, and city_id information back to the DataFrame 
     based on previously cached geocode results.
@@ -502,6 +502,3 @@ def filter_flag_and_not_geocoded_authors(author_data, csv_path_cleaned, excel_pa
     print(f"Number of rows in bad results: {authors_bad_results.shape[0]}")
     
     return authors_cleaned, authors_bad_results
-
-
-    
