@@ -78,6 +78,7 @@ def save_city_data_and_assign_city_id_column(geocode_cache, city_col: str, autho
     Saves city data in the geocode cache, assigns city_id to respective columns, and updates the cache.
     
     Args:
+        geocode_cache (dict): A dictionary that stores cached geocoding results.
         city_col (str): The column representing the type of city ('borncity', 'deathcity', 'activecity').
         author (int): The row index of the author in the dataset.
         cache_key (str): The key to cache the city name.
@@ -375,7 +376,8 @@ def map_coordinates(df, city_col, geocode_cache) -> pd.DataFrame:
     
     Args:
         df (pandas.DataFrame): The DataFrame containing the city data.
-        city_col (str): The column name for the city (e.g., 'borncity', 'deathcity', or 'activecity').
+        city_col (str): The column name for the city ('borncity', 'deathcity', or 'activecity').
+        geocode_cache (dict): A dictionary that stores cached geocoding results.
     
     Returns:
         pandas.DataFrame: Updated DataFrame with the coordinates, country, and city_id mapped.
