@@ -37,3 +37,7 @@ This project was built using **Python 3.8.19**. Make sure you are using this ver
 
 ### License
 This project is licensed under the MIT License.
+
+The inicial work of geododing and visualization the UKP was made [here](https://github.com/lorenafc/Capita_Selecta_RHI50403).
+
+
