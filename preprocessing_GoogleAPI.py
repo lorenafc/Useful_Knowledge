@@ -16,6 +16,9 @@ import json
 API_KEY = "YOUR_GOOGLE_API_KEY"
 gmaps = googlemaps.Client(key=API_KEY)
 
+with open('countries.json') as countries_file:
+    countries = json.load(countries_file)
+
 #Load your data
 file_path = 'path/to/your/input_file.csv' 
 # author_data = pd.read_csv(file_path)
@@ -99,57 +102,9 @@ def save_cities_dict_to_json(cities_dict, filename=dict_file) -> None:
 
 cities_dict = load_or_initialize_cities_dict()    
 
-americas_or_oceania_countries = [
-    # North America & Central America
-    'Belize', 'Canada', 'Costa Rica', 'El Salvador', 'Guatemala', 'Honduras', 'Mexico', 
-    'Nicaragua', 'Panama', 'United States',
-    
-    # South America
-    'Argentina', 'Bolivia', 'Brazil', 'Chile', 'Colombia', 'Ecuador', 'French Guiana', 
-    'Guyana', 'Paraguay', 'Peru', 'Suriname', 'Uruguay', 'Venezuela',
-    
-    # Caribbean
-    'Antigua and Barbuda', 'Anguilla', 'Bahamas', 'Barbados', 'Bermuda', 'British Virgin Islands', 
-    'Cayman Islands', 'Cuba', 'Dominica', 'Dominican Republic', 'Grenada', 'Haiti', 
-    'Jamaica', 'Montserrat', 'Saint Kitts and Nevis', 'Saint Lucia', 
-    'Saint Vincent and the Grenadines', 'Trinidad and Tobago', 'Turks and Caicos Islands', 
-    'US Virgin Islands',
-    
-    # Oceania
-    'Australia', 'Fiji', 'Kiribati', 'Marshall Islands', 'Micronesia', 'Nauru', 
-    'New Zealand', 'Palau', 'Papua New Guinea', 'Samoa', 'Solomon Islands', 
-    'Tonga', 'Tuvalu', 'Vanuatu'
-]
-
-european_countries = [
-    'Albania', 'Andorra', 'Austria', 'Belarus', 'Belgium', 'Bosnia and Herzegovina', 'Bulgaria', 'Croatia', 'Cyprus', 
-    'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland', 'Ireland', 
-    'Italy', 'Kosovo', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Malta', 'Moldova', 'Monaco', 'Montenegro',
-    'Netherlands', 'North Macedonia', 'Norway', 'Poland', 'Portugal', 'Romania', 'Russia', 'San Marino', 'Serbia', 
-    'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Switzerland', 'Ukraine', 'United Kingdom'
-]
-
-year_discovery = {
-    # North America & Central America
-    'Belize': 1502, 'Canada': 1497, 'Costa Rica': 1502, 'El Salvador': 1524, 'Guatemala': 1524, 'Honduras': 1502, 'Mexico': 1519, 
-    'Nicaragua': 1502, 'Panama': 1501, 'United States': 1492,  
-    
-    # South America
-    'Argentina': 1502, 'Bolivia': 1535, 'Brazil': 1500, 'Chile': 1520, 'Colombia': 1499, 'Ecuador': 1526, 'French Guiana' : 1498, 
-    'Guyana': 1498, 'Paraguay': 1524, 'Peru': 1524, 'Suriname': 1593, 'Uruguay': 1516, 'Venezuela': 1498,  
-    
-    # Caribbean     
-    'Antigua and Barbuda': 1493, 'Anguilla': 1493, 'Bahamas': 1492, 'Barbados': 1492,
-    'Bermuda': 1505, 'Cayman Islands': 1503,'Cuba': 1492,'Dominica': 1493, 'Dominican Republic': 1492,
-    'Grenada': 1498, 'Haiti': 1492,'Jamaica': 1494,'Montserrat': 1493, 'Saint Kitts and Nevis': 1493,
-    'Saint Lucia': 1502, 'Saint Vincent and the Grenadines': 1498,'Trinidad and Tobago': 1498,
-    'Turks and Caicos Islands': 1492, 'British Virgin Islands': 1493, 'US Virgin Islands': 1493,
-       
-    # Oceania
-    'Australia': 1606,  'Fiji': 1643, 'Kiribati': 1606, 'Marshall Islands': 1526, 'Micronesia': 1521,
-    'Nauru': 1798, 'New Zealand': 1642, 'Palau': 1696, 'Papua New Guinea': 1526, 'Solomon Islands': 1568, 
-    'Tonga': 1616, 'Tuvalu': 1568, 'Vanuatu': 1606, 'Samoa': 1722
-}
+americas_or_oceania_countries = countries["americas_or_oceania_countries"]
+european_countries = countries["european_countries"]
+year_discovery = countries["year_discovery"]
 
 
 # Add necessary columns
